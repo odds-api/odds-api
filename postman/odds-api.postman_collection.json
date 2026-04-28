@@ -1,0 +1,45 @@
+{
+  "info": {
+    "name": "Odds API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "https://api.odds-api.net/v1" },
+    { "key": "api_key", "value": "replace_me" }
+  ],
+  "item": [
+    {
+      "name": "Search Events",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "X-API-Key", "value": "{{api_key}}" }],
+        "url": "{{base_url}}/events?sport=rugby-league&league=NRL"
+      }
+    },
+    {
+      "name": "Odds Snapshot",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "X-API-Key", "value": "{{api_key}}" }],
+        "url": "{{base_url}}/events/{{event_id}}/odds/snapshot"
+      }
+    },
+    {
+      "name": "Positive EV Snapshot",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "X-API-Key", "value": "{{api_key}}" }],
+        "url": "{{base_url}}/bets/snapshot?strategies=pos_ev"
+      }
+    },
+    {
+      "name": "Arbitrage Snapshot",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "X-API-Key", "value": "{{api_key}}" }],
+        "url": "{{base_url}}/bets/snapshot?strategies=arbitrage"
+      }
+    }
+  ]
+}
+

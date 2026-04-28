@@ -1,0 +1,27 @@
+{
+  "name": "odds-api",
+  "private": true,
+  "description": "Public SDKs, OpenAPI schema, examples, and MCP server for odds-api.net.",
+  "license": "Apache-2.0",
+  "homepage": "https://odds-api.net",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/odds-api/odds-api.git"
+  },
+  "bugs": {
+    "url": "https://github.com/odds-api/odds-api/issues"
+  },
+  "type": "module",
+  "workspaces": [
+    "sdks/typescript",
+    "mcp-server"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present && node scripts/smoke_examples.mjs",
+    "lint:openapi": "npx @redocly/cli@2.30.0 lint openapi.yaml"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

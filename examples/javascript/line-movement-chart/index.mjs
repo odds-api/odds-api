@@ -1,0 +1,14 @@
+import { createExampleClient, riskNote } from "../lib/example-client.mjs";
+
+const client = createExampleClient();
+const history = await client.getLineMovement("event-1001", "moneyline:home", { price_type: "odds" });
+
+console.log("# Line movement");
+for (const series of history.series || []) {
+  console.log(series.bookmaker_name);
+  for (const point of series.points) {
+    console.log(`  ${point.tick_ts}: ${point.odds}`);
+  }
+}
+console.log(riskNote());
+

@@ -1,0 +1,2727 @@
+openapi: 3.1.0
+info:
+  title: Odds API
+  description: 'Public V1 reference for customer API endpoints. Published families:
+    meta, control, metadata, events, odds, racing-events, racing-odds, bets, results.
+    Only explicitly allowlisted operations are published here. Future endpoints remain
+    hidden until they are added to PUBLIC_REFERENCE_FAMILIES in src/v1/app.py. Use
+    API-key authentication first for server-side integrations. App bearer tokens are
+    supported for current app-user flows where the endpoint allows them. Handle 429
+    rate limits, stale timestamps, empty odds arrays, and suspended markets in every
+    client.'
+  version: 1.0.0
+  license:
+    name: Proprietary
+    url: https://odds-api.net
+  x-workflow-examples:
+  - name: positive_ev_request
+    summary: Find positive EV bets for a league.
+    steps:
+    - GET /v1/events?sport=rugby-league&league=NRL
+    - GET /v1/bets/snapshot?strategies=pos_ev
+    - Use response timestamps and stake/risk controls before showing user-facing picks.
+  - name: arbitrage_request
+    summary: Find arbitrage opportunities across allowed bookmakers.
+    steps:
+    - GET /v1/bookmakers
+    - GET /v1/bets/snapshot?strategies=arbitrage
+    - Show execution-risk caveats; never present arbitrage as guaranteed after limits,
+      voids, or delays.
+  - name: odds_history_request
+    summary: Get line movement for a market.
+    steps:
+    - GET /v1/events/{event_id}/odds/snapshot
+    - Pick a selection_key from an odds line.
+    - GET /v1/events/{event_id}/odds/history?selection_key=...
+  x-responsible-gambling: Do not present betting outcomes as risk-free. Always mention
+    execution risk, stale prices, bookmaker limits, voids, delays, and jurisdictional
+    availability in user-facing products.
+paths:
+  /:
+    get:
+      tags:
+      - meta
+      summary: Root
+      operationId: root__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '401': &id001
+          description: Missing or invalid credentials.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403': &id002
+          description: Credentials are valid but do not allow this resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404': &id003
+          description: Resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429': &id004
+          description: Rate limit exceeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitResponse'
+        '500': &id005
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      security: []
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /me:
+    get:
+      tags:
+      - control
+      summary: Me
+      operationId: me_me_get
+      security: &id006
+      - ApiKeyAuth: []
+      - BearerAuth: []
+      parameters:
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /usage:
+    get:
+      tags:
+      - control
+      summary: Usage
+      operationId: usage_usage_get
+      security: *id006
+      parameters:
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /limits:
+    get:
+      tags:
+      - control
+      summary: Limits
+      operationId: limits_limits_get
+      security: *id006
+      parameters:
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /sports:
+    get:
+      tags:
+      - metadata
+      summary: Sports
+      operationId: sports_sports_get
+      security: *id006
+      parameters:
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /leagues:
+    get:
+      tags:
+      - metadata
+      summary: Leagues
+      operationId: leagues_leagues_get
+      security: *id006
+      parameters:
+      - name: sport
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sport
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /bookmakers:
+    get:
+      tags:
+      - metadata
+      summary: Bookmakers
+      operationId: bookmakers_bookmakers_get
+      security: *id006
+      parameters:
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /events:
+    get:
+      tags:
+      - events
+      summary: List Events
+      operationId: list_events_events_get
+      security: *id006
+      parameters:
+      - name: sport
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sport
+      - name: league
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: League
+      - name: start_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          description: Unix seconds; default now.
+          title: Start From
+        description: Unix seconds; default now.
+      - name: start_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          description: Unix seconds; optional.
+          title: Start To
+        description: Unix seconds; optional.
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 'Pagination cursor: ''start_time:event_id''.'
+          title: Cursor
+        description: 'Pagination cursor: ''start_time:event_id''.'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 200
+          title: Limit
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventListResponse'
+              examples:
+                default:
+                  summary: List Events
+                  value:
+                    items:
+                    - event_id: '3704597661'
+                      sport: rugby-league
+                      league: NRL
+                      start_time: 1760000000
+                      home_team: Home
+                      away_team: Away
+                      bookmakers:
+                        bet365: odds-doc-id
+                    next_cursor: null
+                    count: 1
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /events/{event_id}:
+    get:
+      tags:
+      - events
+      summary: Get Event
+      operationId: get_event_events__event_id__get
+      security: *id006
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Event Id
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventDetail'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /events/{event_id}/odds/snapshot:
+    get:
+      tags:
+      - odds
+      summary: Odds Snapshot
+      operationId: odds_snapshot_events__event_id__odds_snapshot_get
+      security: *id006
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Event Id
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 10000
+          minimum: 1
+          default: 2000
+          title: Limit
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Redis HSCAN cursor
+          title: Cursor
+        description: Redis HSCAN cursor
+      - name: bookmakers
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Comma-separated bookmaker allow-list
+          title: Bookmakers
+        description: Comma-separated bookmaker allow-list
+      - name: types
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Comma-separated type allow-list
+          title: Types
+        description: Comma-separated type allow-list
+      - name: market_keys
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Comma-separated market_key allow-list
+          title: Market Keys
+        description: Comma-separated market_key allow-list
+      - name: periods
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Comma-separated periods allow-list
+          title: Periods
+        description: Comma-separated periods allow-list
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OddsSnapshotResponse'
+              examples:
+                default:
+                  summary: Odds Snapshot
+                  value:
+                    event_id: '3704597661'
+                    as_of_ts_ms: 1760000000000
+                    ttl_seconds: 1800
+                    items:
+                    - id: 'bet365::moneyline::moneyline::0::::home::'
+                      event_id: '3704597661'
+                      bookmaker: bet365
+                      market_key: moneyline
+                      type: moneyline
+                      period: 0
+                      side: home
+                      selection_name: Home
+                      odds: 2.1
+                      odds_no_vig: 2.04
+                      is_available: true
+                    next_cursor: null
+                    resume: 1760000000000-0
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /events/{event_id}/odds/stream:
+    get:
+      tags:
+      - odds
+      summary: Odds Stream
+      operationId: odds_stream_events__event_id__odds_stream_get
+      security: *id006
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Event Id
+      - name: bookmakers
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Comma-separated bookmaker allow-list
+          title: Bookmakers
+        description: Comma-separated bookmaker allow-list
+      - name: types
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Comma-separated type allow-list
+          title: Types
+        description: Comma-separated type allow-list
+      - name: market_keys
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Comma-separated market_key allow-list
+          title: Market Keys
+        description: Comma-separated market_key allow-list
+      - name: periods
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Comma-separated periods allow-list
+          title: Periods
+        description: Comma-separated periods allow-list
+      - name: since
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Redis stream ID
+          title: Since
+        description: Redis stream ID
+      - name: catchup
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+          title: Catchup
+      - name: heartbeat_sec
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 120
+          minimum: 5
+          default: 15
+          title: Heartbeat Sec
+      - name: max_batch
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 2000
+          minimum: 1
+          default: 500
+          title: Max Batch
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /events/{event_id}/odds/history/stream:
+    get:
+      tags:
+      - odds
+      summary: Odds History Stream
+      operationId: odds_history_stream_events__event_id__odds_history_stream_get
+      security: *id006
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Event Id
+      - name: selection_key
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          title: Selection Key
+      - name: market_group_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Market Group Id
+      - name: bookmakers
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Comma-separated bookmaker allow-list
+          title: Bookmakers
+        description: Comma-separated bookmaker allow-list
+      - name: price_type
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: ^(odds|odds_no_vig|fair_odds)$
+          default: odds_no_vig
+          title: Price Type
+      - name: include_unavailable
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+          title: Include Unavailable
+      - name: since
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Redis stream ID
+          title: Since
+        description: Redis stream ID
+      - name: catchup
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+          title: Catchup
+      - name: heartbeat_sec
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 120
+          minimum: 5
+          default: 15
+          title: Heartbeat Sec
+      - name: max_batch
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 2000
+          minimum: 1
+          default: 500
+          title: Max Batch
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /events/{event_id}/odds/history:
+    get:
+      tags:
+      - odds
+      summary: Odds History
+      operationId: odds_history_events__event_id__odds_history_get
+      security: *id006
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Event Id
+      - name: selection_key
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          title: Selection Key
+      - name: market_group_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Market Group Id
+      - name: bookmakers
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Comma-separated bookmaker allow-list
+          title: Bookmakers
+        description: Comma-separated bookmaker allow-list
+      - name: from_ts
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: ISO8601 UTC start
+          title: From Ts
+        description: ISO8601 UTC start
+      - name: to_ts
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: ISO8601 UTC end
+          title: To Ts
+        description: ISO8601 UTC end
+      - name: price_type
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: ^(odds|odds_no_vig|fair_odds)$
+          default: odds
+          title: Price Type
+      - name: include_unavailable
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Include Unavailable
+      - name: limit_points_per_bookmaker
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 10000
+          minimum: 1
+          default: 2000
+          title: Limit Points Per Bookmaker
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OddsHistoryResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /bets/snapshot:
+    get:
+      tags:
+      - bets
+      summary: Snapshot
+      operationId: snapshot_bets_snapshot_get
+      security: *id006
+      parameters:
+      - name: strategies
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Comma-separated strategies or 'all'
+          default: all
+          title: Strategies
+        description: Comma-separated strategies or 'all'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 20000
+          minimum: 1
+          default: 2000
+          title: Limit
+      - name: event_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Event Id
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              examples:
+                default:
+                  summary: Snapshot
+                  value:
+                    items:
+                    - id: example-positive-ev
+                      strategy: pos_ev
+                      event_id: '3704597661'
+                      bookmaker_name: Bet365
+                      selection_key: moneyline:home
+                      odds: 2.1
+                      fair_odds: 1.95
+                      ev: 7.7
+                    resume:
+                      pos_ev: 1760000000000-0
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /bets/stream:
+    get:
+      tags:
+      - bets
+      summary: Stream
+      operationId: stream_bets_stream_get
+      security: *id006
+      parameters:
+      - name: strategies
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: all
+          title: Strategies
+      - name: since
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Resume token from /snapshot (JSON mapping strategy->id)
+          title: Since
+        description: Resume token from /snapshot (JSON mapping strategy->id)
+      - name: catchup
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+          title: Catchup
+      - name: heartbeat_sec
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 120
+          minimum: 5
+          default: 15
+          title: Heartbeat Sec
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /events/{event_id}/results:
+    get:
+      tags:
+      - results
+      summary: Get Event Results
+      operationId: get_event_results_events__event_id__results_get
+      security: *id006
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Event Id
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultItem'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /racing/events:
+    get:
+      tags:
+      - racing-events
+      summary: List Racing Events
+      operationId: list_racing_events_racing_events_get
+      security: *id006
+      parameters:
+      - name: race_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Comma-separated race types.
+          title: Race Type
+        description: Comma-separated race types.
+      - name: race_state
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Comma-separated race states.
+          title: Race State
+        description: Comma-separated race states.
+      - name: race_country
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Comma-separated race countries.
+          title: Race Country
+        description: Comma-separated race countries.
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Comma-separated statuses.
+          title: Status
+        description: Comma-separated statuses.
+      - name: start_from
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          description: Unix seconds; default now-900.
+          title: Start From
+        description: Unix seconds; default now-900.
+      - name: start_to
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          description: Unix seconds; optional.
+          title: Start To
+        description: Unix seconds; optional.
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 'Pagination cursor: ''race_start_time:event_id''.'
+          title: Cursor
+        description: 'Pagination cursor: ''race_start_time:event_id''.'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 200
+          title: Limit
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RacingEventListResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /racing/events/stream:
+    get:
+      tags:
+      - racing-events
+      summary: Stream Racing Events
+      operationId: stream_racing_events_racing_events_stream_get
+      security: *id006
+      parameters:
+      - name: since
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Redis stream ID
+          title: Since
+        description: Redis stream ID
+      - name: catchup
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+          title: Catchup
+      - name: heartbeat_sec
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 120
+          minimum: 5
+          default: 15
+          title: Heartbeat Sec
+      - name: max_batch
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 2000
+          minimum: 1
+          default: 500
+          title: Max Batch
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /racing/events/{event_id}:
+    get:
+      tags:
+      - racing-events
+      summary: Get Racing Event
+      operationId: get_racing_event_racing_events__event_id__get
+      security: *id006
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Event Id
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RacingEventDetail'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /racing/events/{event_id}/odds:
+    get:
+      tags:
+      - racing-odds
+      summary: Get Racing Odds Snapshot
+      operationId: get_racing_odds_snapshot_racing_events__event_id__odds_get
+      security: *id006
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Event Id
+      - name: bookmakers
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Comma-separated bookmaker filter.
+          title: Bookmakers
+        description: Comma-separated bookmaker filter.
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RacingOddsSnapshotResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /racing/events/{event_id}/odds/stream:
+    get:
+      tags:
+      - racing-odds
+      summary: Stream Racing Odds
+      operationId: stream_racing_odds_racing_events__event_id__odds_stream_get
+      security: *id006
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Event Id
+      - name: since
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Redis stream ID.
+          title: Since
+        description: Redis stream ID.
+      - name: catchup
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+          title: Catchup
+      - name: heartbeat_sec
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 120
+          minimum: 5
+          default: 15
+          title: Heartbeat Sec
+      - name: max_batch
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 2000
+          minimum: 1
+          default: 500
+          title: Max Batch
+      - name: api_key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Api Key
+      - name: key
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Key
+      - name: id_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Id Token
+      - name: access_token
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Access Token
+      - name: session
+        in: cookie
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Session
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401': *id001
+        '403': *id002
+        '404': *id003
+        '429': *id004
+        '500': *id005
+      description: Public Odds API operation. Authenticate with X-API-Key where possible.
+        Check timestamps before displaying prices and handle empty, stale, or suspended
+        markets.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+components:
+  schemas:
+    EventDetail:
+      properties:
+        event_id:
+          type: string
+          title: Event Id
+        data:
+          additionalProperties: true
+          type: object
+          title: Data
+      type: object
+      required:
+      - event_id
+      - data
+      title: EventDetail
+    EventListResponse:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/EventSummary'
+          type: array
+          title: Items
+        next_cursor:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Next Cursor
+        count:
+          type: integer
+          title: Count
+      type: object
+      required:
+      - items
+      - count
+      title: EventListResponse
+    EventSummary:
+      properties:
+        event_id:
+          type: string
+          title: Event Id
+          description: Canonical event identifier (game_masterID).
+        sport:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sport
+        league:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: League
+          description: League name representation.
+        start_time:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Start Time
+          description: Unix seconds.
+        home_team:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Home Team
+        away_team:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Away Team
+        last_capture:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Last Capture
+          description: Unix seconds.
+        bookmakers:
+          additionalProperties:
+            anyOf:
+            - type: string
+            - type: 'null'
+          type: object
+          title: Bookmakers
+          description: Bookmaker -> odds_data_id.
+      type: object
+      required:
+      - event_id
+      title: EventSummary
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    OddLine:
+      properties:
+        id:
+          type: string
+          title: Id
+        event_id:
+          type: string
+          title: Event Id
+        bookmaker:
+          type: string
+          title: Bookmaker
+        selection_key:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Selection Key
+        market_group_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Market Group Id
+        market_key:
+          type: string
+          title: Market Key
+        type:
+          type: string
+          title: Type
+        bet_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Bet Type
+        period:
+          type: integer
+          title: Period
+        period_str:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Period Str
+        metric:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Metric
+        line:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Line
+        side:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Side
+        player_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Player Name
+        selection_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Selection Name
+        odds:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Odds
+        odds_no_vig:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Odds No Vig
+        is_available:
+          type: boolean
+          title: Is Available
+          default: true
+      type: object
+      required:
+      - id
+      - event_id
+      - bookmaker
+      - market_key
+      - type
+      - period
+      title: OddLine
+    OddsHistoryMeta:
+      properties:
+        from_ts:
+          type: string
+          format: date-time
+          title: From Ts
+        to_ts:
+          type: string
+          format: date-time
+          title: To Ts
+        available_price_types:
+          items:
+            type: string
+          type: array
+          title: Available Price Types
+      type: object
+      required:
+      - from_ts
+      - to_ts
+      - available_price_types
+      title: OddsHistoryMeta
+    OddsHistoryPoint:
+      properties:
+        tick_ts:
+          type: string
+          format: date-time
+          title: Tick Ts
+        is_available:
+          type: boolean
+          title: Is Available
+        value:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Value
+        odds:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Odds
+        odds_no_vig:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Odds No Vig
+        fair_odds:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Fair Odds
+      type: object
+      required:
+      - tick_ts
+      - is_available
+      title: OddsHistoryPoint
+    OddsHistoryResponse:
+      properties:
+        event_id:
+          type: string
+          title: Event Id
+        selection_key:
+          type: string
+          title: Selection Key
+        price_type:
+          type: string
+          title: Price Type
+        series:
+          items:
+            $ref: '#/components/schemas/OddsHistorySeries'
+          type: array
+          title: Series
+        meta:
+          $ref: '#/components/schemas/OddsHistoryMeta'
+      type: object
+      required:
+      - event_id
+      - selection_key
+      - price_type
+      - series
+      - meta
+      title: OddsHistoryResponse
+    OddsHistorySeries:
+      properties:
+        bookmaker_name:
+          type: string
+          title: Bookmaker Name
+        points:
+          items:
+            $ref: '#/components/schemas/OddsHistoryPoint'
+          type: array
+          title: Points
+      type: object
+      required:
+      - bookmaker_name
+      - points
+      title: OddsHistorySeries
+    OddsSnapshotResponse:
+      properties:
+        event_id:
+          type: string
+          title: Event Id
+        as_of_ts_ms:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: As Of Ts Ms
+        ttl_seconds:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Ttl Seconds
+        items:
+          items:
+            $ref: '#/components/schemas/OddLine'
+          type: array
+          title: Items
+        next_cursor:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Next Cursor
+        resume:
+          type: string
+          title: Resume
+          description: Redis stream ID to resume from; pass as 'since' to /stream.
+      type: object
+      required:
+      - event_id
+      - items
+      - resume
+      title: OddsSnapshotResponse
+    RacingEventDetail:
+      properties:
+        event_id:
+          type: string
+          title: Event Id
+        data:
+          additionalProperties: true
+          type: object
+          title: Data
+      type: object
+      required:
+      - event_id
+      - data
+      title: RacingEventDetail
+    RacingEventListResponse:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/RacingEventSummary'
+          type: array
+          title: Items
+        next_cursor:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Next Cursor
+        count:
+          type: integer
+          title: Count
+      type: object
+      required:
+      - count
+      title: RacingEventListResponse
+    RacingEventSummary:
+      properties:
+        event_id:
+          type: string
+          title: Event Id
+          description: Canonical racing event identifier (raceID).
+        race_start_time:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Race Start Time
+          description: Unix seconds.
+        race_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Race Type
+        race_venue:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Race Venue
+        race_number:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Race Number
+        race_state:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Race State
+        race_country:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Race Country
+        race_distance:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Race Distance
+        active_runners:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Active Runners
+        status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+        bookmaker_links:
+          additionalProperties: true
+          type: object
+          title: Bookmaker Links
+        scrapping_links:
+          additionalProperties: true
+          type: object
+          title: Scrapping Links
+        last_capture:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Last Capture
+          description: Unix seconds.
+      type: object
+      required:
+      - event_id
+      title: RacingEventSummary
+    RacingOddsBookmakerSnapshot:
+      properties:
+        bookmaker_name:
+          type: string
+          title: Bookmaker Name
+        race_id:
+          type: string
+          title: Race Id
+        status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+        updated_at_ts:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Updated At Ts
+        payload:
+          additionalProperties: true
+          type: object
+          title: Payload
+      type: object
+      required:
+      - bookmaker_name
+      - race_id
+      title: RacingOddsBookmakerSnapshot
+    RacingOddsSnapshotResponse:
+      properties:
+        event_id:
+          type: string
+          title: Event Id
+        as_of_ts_ms:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: As Of Ts Ms
+        ttl_seconds:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Ttl Seconds
+        items:
+          items:
+            $ref: '#/components/schemas/RacingOddsBookmakerSnapshot'
+          type: array
+          title: Items
+        resume:
+          type: string
+          title: Resume
+          description: Redis stream ID to resume from; pass as 'since' to /stream.
+      type: object
+      required:
+      - event_id
+      - resume
+      title: RacingOddsSnapshotResponse
+    ResultItem:
+      properties:
+        event_id:
+          type: string
+          title: Event Id
+        status:
+          type: string
+          title: Status
+          description: available|pending
+        result:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Result
+      type: object
+      required:
+      - event_id
+      - status
+      title: ResultItem
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    ErrorResponse:
+      type: object
+      required:
+      - detail
+      properties:
+        detail:
+          description: Human-readable error detail. FastAPI may return a string or
+            a validation-error object.
+          oneOf:
+          - type: string
+          - type: object
+          - type: array
+            items:
+              type: object
+        code:
+          type: string
+          description: Optional stable error code when provided by the endpoint.
+        request_id:
+          type: string
+          description: Optional request identifier for support/debugging.
+    RateLimitResponse:
+      allOf:
+      - $ref: '#/components/schemas/ErrorResponse'
+      description: Rate-limit response. Retry after the window or reduce polling frequency.
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Preferred server-side authentication method for Odds API clients.
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: App-user bearer token for supported app flows.
+tags:
+- name: meta
+  description: API identity and reference metadata.
+- name: control
+  description: Current identity, usage, and limits.
+- name: metadata
+  description: Sports, leagues, bookmakers, registry, and public runtime metadata.
+- name: events
+  description: Sports event discovery and event-level metadata.
+- name: odds
+  description: Sports odds snapshots, streams, main lines, and line movement.
+- name: racing-events
+  description: Racing event discovery and racing event streams.
+- name: racing-odds
+  description: Racing odds snapshots and streams.
+- name: bets
+  description: Betting opportunity snapshots, streams, and helper calculations.
+- name: results
+  description: Sports event result lookup.
+servers:
+- url: https://api.odds-api.net/v1
+  description: Production V1 base URL. Set ODDS_API_BASE_URL to override it in SDKs
+    and examples.
+x-public-reference-families:
+- meta
+- control
+- metadata
+- events
+- odds
+- racing-events
+- racing-odds
+- bets
+- results

@@ -1,0 +1,46 @@
+{
+  "name": "@odds-api/mcp",
+  "version": "0.1.0",
+  "description": "MCP server for the Odds API.",
+  "license": "Apache-2.0",
+  "homepage": "https://odds-api.net",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/odds-api/odds-api.git",
+    "directory": "mcp-server"
+  },
+  "bugs": {
+    "url": "https://github.com/odds-api/odds-api/issues"
+  },
+  "keywords": [
+    "mcp",
+    "odds",
+    "sports-betting",
+    "racing",
+    "agents"
+  ],
+  "type": "module",
+  "bin": {
+    "odds-api-mcp": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.0",
+    "@odds-api/client": "file:../sdks/typescript",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "name": "@odds-api/client",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for the Odds API.",
+  "license": "Apache-2.0",
+  "homepage": "https://odds-api.net",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/odds-api/odds-api.git",
+    "directory": "sdks/typescript"
+  },
+  "bugs": {
+    "url": "https://github.com/odds-api/odds-api/issues"
+  },
+  "keywords": [
+    "odds",
+    "sports-betting",
+    "racing",
+    "openapi",
+    "sdk"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
