@@ -228,7 +228,9 @@ console.log(best);
 ### Python SDK
 
 ```bash
-pip install odds-api-client
+git clone git@github.com:odds-api/odds-api.git
+cd odds-api
+python3 -m pip install -e sdks/python
 ```
 
 ```python
