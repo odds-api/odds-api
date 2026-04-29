@@ -25,4 +25,4 @@ with urlopen(request, timeout=20) as response:
     print(json.dumps(json.loads(response.read()), indent=2))
 ```
 
-When the project grows, use the Python SDK in `sdks/python` for reusable methods such as `search_events`, `find_best_odds`, `find_arbitrage`, `find_positive_ev`, and `get_line_movement`.
+When the project grows, install the Python SDK with `python3 -m pip install odds-api-client` for reusable methods such as `search_events`, `find_best_odds`, `find_arbitrage`, `find_positive_ev`, and `get_line_movement`.

@@ -6,7 +6,7 @@ Use this package when you want typed Python access to sports odds, betting odds,
 
 ## Install
 
-After the first PyPI release is published:
+Install from PyPI:
 
 ```bash
 python3 -m pip install odds-api-client
@@ -62,5 +62,6 @@ Arbitrage and positive EV examples are betting research workflows, not guarantee
 ## Links
 
 - GitHub: https://github.com/odds-api/odds-api
+- PyPI: https://pypi.org/project/odds-api-client/
 - API: https://api.odds-api.net/v1
 - OpenAPI: https://github.com/odds-api/odds-api/blob/main/openapi.yaml

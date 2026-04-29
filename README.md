@@ -11,6 +11,7 @@
   <a href="https://github.com/odds-api/odds-api/forks"><img alt="GitHub forks" src="https://img.shields.io/github/forks/odds-api/odds-api?style=for-the-badge&labelColor=0B1220"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/odds-api/odds-api?style=for-the-badge&labelColor=0B1220"></a>
   <a href="https://github.com/odds-api/odds-api/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/odds-api/odds-api?style=for-the-badge&labelColor=0B1220"></a>
+  <a href="https://pypi.org/project/odds-api-client/"><img alt="PyPI" src="https://img.shields.io/pypi/v/odds-api-client?style=for-the-badge&label=PyPI&labelColor=0B1220"></a>
   <img alt="OpenAPI" src="https://img.shields.io/badge/OpenAPI-3.1-FACC15?style=for-the-badge&labelColor=0B1220">
   <img alt="MCP" src="https://img.shields.io/badge/MCP-agent--tools-F97316?style=for-the-badge&labelColor=0B1220">
 </p>
@@ -228,10 +229,10 @@ console.log(best);
 ### Python SDK
 
 ```bash
-git clone git@github.com:odds-api/odds-api.git
-cd odds-api
-python3 -m pip install -e sdks/python
+python3 -m pip install odds-api-client
 ```
+
+Published package: [`odds-api-client` on PyPI](https://pypi.org/project/odds-api-client/).
 
 ```python
 import os
@@ -241,6 +242,12 @@ client = OddsApiClient(api_key=os.environ["ODDS_API_KEY"])
 events = client.search_events(sport="rugby-league", league="NRL")
 best = client.find_best_odds(events["items"][0]["event_id"])
 print(best)
+```
+
+For local SDK development from the repo:
+
+```bash
+python3 -m pip install -e sdks/python
 ```
 
 SDK helpers include:

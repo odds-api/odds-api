@@ -1,12 +1,22 @@
 # PyPI publishing
 
-This repo publishes the Python SDK as `odds-api-client`.
+This repo publishes the Python SDK as [`odds-api-client`](https://pypi.org/project/odds-api-client/).
 
 Use Trusted Publishing from GitHub Actions. Do not store a long-lived PyPI token in GitHub secrets unless Trusted Publishing is unavailable.
 
-## One-time PyPI setup
+## Current status
 
-Create or use the PyPI owner account or organization that should own `odds-api-client`.
+- PyPI project: [`odds-api-client`](https://pypi.org/project/odds-api-client/)
+- First published version: `0.1.1`
+- GitHub environment: `pypi`
+- Publish workflow: `.github/workflows/python-publish.yml`
+- Install command: `python3 -m pip install odds-api-client`
+
+The one-time pending Trusted Publisher setup has been completed. Future package uploads should happen through GitHub Actions.
+
+## One-time PyPI setup reference
+
+Use this only if the PyPI project or trusted publisher ever needs to be recreated. Create or use the PyPI owner account or organization that should own `odds-api-client`.
 
 Add a pending trusted publisher on PyPI with these exact fields:
 
@@ -20,9 +30,9 @@ Add a pending trusted publisher on PyPI with these exact fields:
 
 The pending publisher does not reserve the name. Publish the first release soon after adding it.
 
-## First publish
+## Manual publish dispatch
 
-After the pending trusted publisher exists, dispatch the workflow from the public repo:
+Use this only when publishing from `main` without a new GitHub release:
 
 ```bash
 gh workflow run python-publish.yml \

@@ -18,7 +18,7 @@ https://api.odds-api.net/v1
 - OpenAPI-first odds integrations
 - MCP-compatible sports odds tools
 - TypeScript SDK usage
-- Python SDK usage
+- Python SDK usage with `pip install odds-api-client`
 - bookmaker comparison
 - arbitrage detection
 - positive EV detection
@@ -43,7 +43,7 @@ https://api.odds-api.net/v1
 1. Raw REST for one curl command, one Python file, or one JavaScript file.
 2. MCP server for AI coding agents.
 3. TypeScript SDK for Node.js, Next.js, and TypeScript apps.
-4. Python SDK for scripts, notebooks, and data pipelines.
+4. Python SDK for scripts, notebooks, and data pipelines: `pip install odds-api-client`.
 5. OpenAPI for generated clients and contract-first workflows.
 
 ## Common tasks
