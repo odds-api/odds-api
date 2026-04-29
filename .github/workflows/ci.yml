@@ -20,4 +20,50 @@ jobs:
       - run: npm run build
       - run: npm test
       - run: npm run lint:openapi
+
+  python-sdk:
+    name: Python SDK ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade build twine tomli
+      - name: Check Python package version sync
+        run: |
+          PYTHONPATH=sdks/python/src python - <<'PY'
+          try:
+              import tomllib
+          except ModuleNotFoundError:
+              import tomli as tomllib
+
+          import odds_api
+
+          with open("sdks/python/pyproject.toml", "rb") as f:
+              expected = tomllib.load(f)["project"]["version"]
+          assert odds_api.__version__ == expected, (odds_api.__version__, expected)
+          print(f"odds-api-client version {expected}")
+          PY
       - run: PYTHONPATH=sdks/python/src python -m unittest discover -s sdks/python/tests
+      - run: python -m build
+        working-directory: sdks/python
+      - run: python -m twine check dist/*
+        working-directory: sdks/python
+      - name: Smoke install Python wheel
+        run: |
+          set -euo pipefail
+          python -m venv /tmp/odds-api-client-install
+          WHEEL="$(ls sdks/python/dist/*.whl | head -n 1)"
+          /tmp/odds-api-client-install/bin/python -m pip install "$WHEEL"
+          /tmp/odds-api-client-install/bin/python - <<'PY'
+          from odds_api import OddsApiClient, __version__
+
+          assert __version__
+          assert OddsApiClient(base_url="https://api.odds-api.net/v1").base_url == "https://api.odds-api.net/v1"
+          print(f"odds-api-client {__version__} import ok")
+          PY

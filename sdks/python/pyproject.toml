@@ -1,15 +1,29 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "odds-api-client"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python SDK for an OpenAPI sports betting odds API for coding agents, with simple REST examples, mock mode, arbitrage, positive EV, line movement, and bookmaker comparison."
 requires-python = ">=3.10"
 readme = "README.md"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
 authors = [{ name = "Odds API" }]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Internet :: WWW/HTTP",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
 keywords = [
   "odds-api",
   "odds",
@@ -29,6 +43,13 @@ keywords = [
   "sdk",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "build>=1.2",
+  "tomli>=2.0; python_version < '3.11'",
+  "twine>=5.0",
+]
+
 [project.urls]
 Homepage = "https://odds-api.net"
 Repository = "https://github.com/odds-api/odds-api"
@@ -36,3 +57,6 @@ Issues = "https://github.com/odds-api/odds-api/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+odds_api = ["py.typed"]

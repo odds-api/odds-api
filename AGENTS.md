@@ -48,6 +48,20 @@ Before any commit, tag, release, or push, verify all of the following:
 
 Do not push the private WagerWise repo, or anything under `/Users/rorincampbell/Desktop/wagerwise`, to `github.com/odds-api/odds-api`. The private WagerWise repo uses the separate `github-rorin:wagerwiseadmin/wagerwise.git` remote.
 
+## PyPI publishing safety
+
+The public Python SDK package is `odds-api-client`, imported as `odds_api`.
+
+Before publishing to PyPI, verify all of the following:
+
+- current directory is `/Users/rorincampbell/Desktop/odds-api-public`
+- package metadata is under `sdks/python/pyproject.toml`
+- package version matches `sdks/python/src/odds_api/__init__.py`
+- GitHub Actions workflow is `.github/workflows/python-publish.yml`
+- PyPI Trusted Publisher is configured for owner `odds-api`, repository `odds-api`, workflow `python-publish.yml`, and environment `pypi`
+
+Do not upload Python packages from the private WagerWise repo. Do not use long-lived PyPI tokens unless Trusted Publishing is unavailable. See `docs/pypi-publishing.md`.
+
 ## Common tasks
 
 Agents can use this repo to:

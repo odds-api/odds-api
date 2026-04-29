@@ -5,6 +5,7 @@ The canonical API reference is generated from the exported OpenAPI files and hos
 Repo-local docs in this folder focus on agent discoverability, MCP setup, and maintainer-facing publishing guidance:
 
 - [`mcp.md`](mcp.md) - MCP server setup and usage for AI coding agents.
+- [`pypi-publishing.md`](pypi-publishing.md) - Python SDK PyPI Trusted Publishing setup and release flow.
 - [`discovery-maintenance.md`](discovery-maintenance.md) - GitHub metadata, release notes, labels, starter issues, and external discovery page guidance.
 - [`starter-issues.md`](starter-issues.md) - starter issue drafts for GitHub.
 - [`discovery-pages/`](discovery-pages/) - publishable search-intent page drafts for odds-api.net or another public docs/blog surface.

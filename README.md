@@ -402,6 +402,7 @@ ODDS_API_MOCK=1 npm test
 
 - [`docs/README.md`](docs/README.md)
 - [`docs/mcp.md`](docs/mcp.md)
+- [`docs/pypi-publishing.md`](docs/pypi-publishing.md)
 - [`docs/discovery-pages`](docs/discovery-pages)
 - [`openapi.yaml`](openapi.yaml)
 - [Runtime reference UI](https://api.odds-api.net/v1/reference)
