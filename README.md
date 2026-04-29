@@ -173,8 +173,15 @@ odds_api.compare_odds
 odds_api.find_arbitrage
 odds_api.find_positive_ev
 odds_api.get_line_movement
+odds_api.get_leagues
 odds_api.get_bookmakers
 odds_api.get_sports
+odds_api.get_results
+odds_api.search_racing_events
+odds_api.get_racing_odds
+odds_api.get_streaming_info
+odds_api.sample_odds_stream
+odds_api.sample_bets_stream
 odds_api.get_market_schema
 ```
 
@@ -190,6 +197,8 @@ flowchart LR
 ```
 
 Agents should use `openapi.yaml` as the source contract, prefer the SDKs or MCP tools for data access, and design the requested product instead of copying a bundled example by default. If a user asks for an odds comparison site, dashboard, bot, scanner, or alerting flow, treat the examples as optional implementation references only.
+
+For realtime products, use `odds_api.get_streaming_info` first. MCP stream sampling tools are bounded inspection helpers; production apps should connect directly to Odds API SSE or WebSocket endpoints.
 
 See [`agents/AGENTS.md`](agents/AGENTS.md) for betting concepts, endpoint workflows, stale odds handling, caching, rate limits, and responsible gambling language.
 
