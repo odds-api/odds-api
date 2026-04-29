@@ -15,6 +15,7 @@ def mock_transport(method, url, headers, body):
             {
                 "id": "positive-ev-example",
                 "strategy": "pos_ev",
+                "selection_key": "moneyline:home",
                 "bookmaker_name": "pinnacle",
                 "odds": 2.11,
                 "fair_odds": 1.98,
@@ -33,6 +34,9 @@ client = OddsApiClient(
 
 snapshot = client.find_positive_ev(limit=10)
 print("# Positive EV scanner")
+print(f"Positive EV opportunities: {len(snapshot['items'])}")
 for bet in snapshot["items"]:
-    print(f"{bet['id']}: {bet['bookmaker_name']} odds={bet['odds']} fair={bet['fair_odds']} ev={bet['ev']}%")
-print("Note: positive EV does not remove betting risk. Check stale odds and market availability.")
+    print(f"Best price: {bet.get('selection_key', 'n/a')} {bet['odds']} at {bet['bookmaker_name']}")
+    print(f"Fair odds: {bet['fair_odds']}")
+    print(f"Expected value: {bet['ev']}%")
+print("Note: positive EV does not remove betting risk. Check stale odds, limits, voids, and market availability.")

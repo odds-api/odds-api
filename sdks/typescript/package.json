@@ -1,7 +1,7 @@
 {
   "name": "@odds-api/client",
   "version": "0.1.0",
-  "description": "TypeScript SDK for the Odds API.",
+  "description": "TypeScript SDK for an OpenAPI sports betting odds API for coding agents, with simple REST examples, mock mode, arbitrage, positive EV, line movement, and bookmaker comparison.",
   "license": "Apache-2.0",
   "homepage": "https://odds-api.net",
   "repository": {
@@ -13,10 +13,21 @@
     "url": "https://github.com/odds-api/odds-api/issues"
   },
   "keywords": [
+    "odds-api",
     "odds",
+    "sports-odds",
+    "betting-odds",
+    "bookmaker-odds",
     "sports-betting",
     "racing",
     "openapi",
+    "typescript-sdk",
+    "ai-agents",
+    "coding-agents",
+    "arbitrage",
+    "positive-ev",
+    "line-movement",
+    "rest-api",
     "sdk"
   ],
   "type": "module",

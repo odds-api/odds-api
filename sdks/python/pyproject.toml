@@ -5,12 +5,29 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "odds-api-client"
 version = "0.1.0"
-description = "Python SDK for the Odds API."
+description = "Python SDK for an OpenAPI sports betting odds API for coding agents, with simple REST examples, mock mode, arbitrage, positive EV, line movement, and bookmaker comparison."
 requires-python = ">=3.10"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 authors = [{ name = "Odds API" }]
-keywords = ["odds", "sports-betting", "racing", "openapi", "sdk"]
+keywords = [
+  "odds-api",
+  "odds",
+  "sports-odds",
+  "betting-odds",
+  "bookmaker-odds",
+  "sports-betting",
+  "racing",
+  "openapi",
+  "python-sdk",
+  "ai-agents",
+  "coding-agents",
+  "arbitrage",
+  "positive-ev",
+  "line-movement",
+  "rest-api",
+  "sdk",
+]
 
 [project.urls]
 Homepage = "https://odds-api.net"

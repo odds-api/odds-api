@@ -6,8 +6,10 @@ const client = createExampleClient();
 const history = await client.getLineMovement("event-1001", "moneyline:home", { price_type: "odds" });
 
 console.log("# Line movement");
+console.log(`Series: ${(history.series || []).length}`);
 for (const series of history.series || []) {
-  console.log(series.bookmaker_name);
+  console.log(`Bookmaker: ${series.bookmaker_name}`);
+  console.log(`Points: ${series.points.length}`);
   for (const point of series.points) {
     console.log(`  ${point.tick_ts}: ${point.odds}`);
   }

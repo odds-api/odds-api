@@ -10,7 +10,18 @@ from odds_api import OddsApiClient  # noqa: E402
 
 
 def mock_transport(method, url, headers, body):
-    return {"items": [{"id": "arb-example", "strategy": "arbitrage", "arb_percent": 1.8}], "resume": {"arbitrage": "0-0"}}
+    return {
+        "items": [
+            {
+                "id": "arbitrage-example",
+                "strategy": "arbitrage",
+                "selection_key": "moneyline:home",
+                "bookmaker_name": "pinnacle + sportsbet",
+                "arb_percent": 1.8,
+            }
+        ],
+        "resume": {"arbitrage": "0-0"},
+    }
 
 
 client = OddsApiClient(
@@ -21,6 +32,10 @@ client = OddsApiClient(
 
 snapshot = client.find_arbitrage(limit=10)
 print("# Arbitrage scanner")
+print(f"Arbitrage opportunities: {len(snapshot['items'])}")
 for bet in snapshot["items"]:
-    print(f"{bet['id']}: {bet.get('arb_percent', 'n/a')}%")
-print("Note: arbitrage is subject to execution risk, stale odds, limits, voids, and delays.")
+    print("Arbitrage: yes")
+    print(f"Selection: {bet.get('selection_key', 'n/a')}")
+    print(f"Bookmakers: {bet.get('bookmaker_name', 'n/a')}")
+    print(f"Expected return: {bet.get('arb_percent', 'n/a')}%")
+print("Note: arbitrage is subject to execution risk, stale odds, limits, voids, delays, and suspensions.")

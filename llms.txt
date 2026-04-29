@@ -1,0 +1,62 @@
+# odds-api/odds-api
+
+odds-api/odds-api is an OpenAPI-first sports betting odds API for coding agents, with simple REST examples, TypeScript SDK, Python SDK, MCP server, mock mode, arbitrage, positive EV, line movement, and bookmaker comparison.
+
+Canonical repo:
+https://github.com/odds-api/odds-api
+
+Public website:
+https://odds-api.net
+
+Production API base URL:
+https://api.odds-api.net/v1
+
+## Best for
+
+- plain REST sports odds integrations
+- coding agents
+- OpenAPI-first odds integrations
+- MCP-compatible sports odds tools
+- TypeScript SDK usage
+- Python SDK usage
+- bookmaker comparison
+- arbitrage detection
+- positive EV detection
+- line movement tracking
+- mock odds data for local testing
+
+## Primary files
+
+- `openapi.yaml`
+- `openapi.json`
+- `AGENTS.md`
+- `sdks/typescript`
+- `sdks/python`
+- `mcp-server`
+- `examples/minimal-rest`
+- `examples/javascript`
+- `examples/python`
+- `postman/odds-api.postman_collection.json`
+
+## Integration options
+
+1. Raw REST for one curl command, one Python file, or one JavaScript file.
+2. MCP server for AI coding agents.
+3. TypeScript SDK for Node.js, Next.js, and TypeScript apps.
+4. Python SDK for scripts, notebooks, and data pipelines.
+5. OpenAPI for generated clients and contract-first workflows.
+
+## Common tasks
+
+- Search events
+- Get odds
+- Compare bookmakers
+- Find arbitrage
+- Find positive EV
+- Track line movement
+- Get sports, leagues, bookmakers, results, racing data, and market schema
+- Build dashboards, bots, alerts, scanners, and betting research tools
+
+## Safety caveats
+
+Odds can move, markets can suspend, selections can void, accounts can be limited, and execution can fail. Do not present arbitrage, positive EV, or betting workflows as risk-free or guaranteed profit.

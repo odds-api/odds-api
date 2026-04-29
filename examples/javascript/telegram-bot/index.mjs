@@ -4,7 +4,12 @@ import { createExampleClient, riskNote } from "../lib/example-client.mjs";
 
 const client = createExampleClient();
 const snapshot = await client.findArbitrage({ limit: 3 });
-const text = [`Odds API arbitrage alert`, ...snapshot.items.map((bet) => `${bet.id}: ${bet.arb_percent ?? "n/a"}%`), riskNote()].join("\n");
+const text = [
+  `Odds API arbitrage alert`,
+  `Arbitrage opportunities: ${snapshot.items.length}`,
+  ...snapshot.items.map((bet) => `${bet.id}: ${bet.bookmaker_name} expected return ${bet.arb_percent ?? "n/a"}%`),
+  riskNote()
+].join("\n");
 
 if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID && process.env.ODDS_API_MOCK !== "1") {
   const url = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`;

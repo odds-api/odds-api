@@ -1,8 +1,26 @@
 {
   "name": "odds-api",
   "private": true,
-  "description": "Public SDKs, OpenAPI schema, examples, and MCP server for odds-api.net.",
+  "description": "OpenAPI sports betting odds API for coding agents, with simple REST examples, TypeScript SDK, Python SDK, MCP server, mock mode, arbitrage, positive EV, line movement, and bookmaker comparison.",
   "license": "Apache-2.0",
+  "keywords": [
+    "odds-api",
+    "sports-betting",
+    "sports-odds",
+    "betting-odds",
+    "bookmaker-odds",
+    "openapi",
+    "mcp-server",
+    "ai-agents",
+    "coding-agents",
+    "typescript-sdk",
+    "python-sdk",
+    "arbitrage",
+    "positive-ev",
+    "line-movement",
+    "sportsbook",
+    "rest-api"
+  ],
   "homepage": "https://odds-api.net",
   "repository": {
     "type": "git",

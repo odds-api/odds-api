@@ -7,93 +7,213 @@
 <p align="center">
   <a href="https://odds-api.net"><img alt="Website" src="https://img.shields.io/badge/website-odds--api.net-22C55E?style=for-the-badge&labelColor=0B1220"></a>
   <a href="https://api.odds-api.net/v1/reference"><img alt="API reference" src="https://img.shields.io/badge/API-api.odds--api.net%2Fv1-38BDF8?style=for-the-badge&labelColor=0B1220"></a>
+  <a href="https://github.com/odds-api/odds-api/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/odds-api/odds-api?style=for-the-badge&labelColor=0B1220"></a>
+  <a href="https://github.com/odds-api/odds-api/forks"><img alt="GitHub forks" src="https://img.shields.io/github/forks/odds-api/odds-api?style=for-the-badge&labelColor=0B1220"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/odds-api/odds-api?style=for-the-badge&labelColor=0B1220"></a>
+  <a href="https://github.com/odds-api/odds-api/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/odds-api/odds-api?style=for-the-badge&labelColor=0B1220"></a>
   <img alt="OpenAPI" src="https://img.shields.io/badge/OpenAPI-3.1-FACC15?style=for-the-badge&labelColor=0B1220">
-  <img alt="SDKs" src="https://img.shields.io/badge/SDKs-TypeScript%20%2B%20Python-A78BFA?style=for-the-badge&labelColor=0B1220">
-  <img alt="MCP" src="https://img.shields.io/badge/MCP-data--access-F97316?style=for-the-badge&labelColor=0B1220">
+  <img alt="MCP" src="https://img.shields.io/badge/MCP-agent--tools-F97316?style=for-the-badge&labelColor=0B1220">
 </p>
 
-<h1 align="center">Odds API</h1>
+<h1 align="center">odds-api/odds-api</h1>
 
 <p align="center">
-  A clean interface for odds, betting, sports, racing, event, result, bookmaker, and market data. Use the API, SDKs, MCP tools, and OpenAPI contract to build your own odds products in the format your app needs.
-</p>
-
-<p align="center">
-  <strong>Collect a free API key from <a href="https://odds-api.net">odds-api.net</a>.</strong>
+  <strong>OpenAPI-first sports betting odds API for coding agents, with simple REST examples, TypeScript SDK, Python SDK, MCP server, mock mode, arbitrage, positive EV, line movement, and bookmaker comparison.</strong>
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick Start</a>
+  Collect a free API key from <a href="https://odds-api.net">odds-api.net</a>.
+</p>
+
+<p align="center">
+  <a href="#30-second-rest-quickstart">30-second REST quickstart</a>
   ·
-  <a href="#data-access-first">Data Access First</a>
+  <a href="#start-simple-scale-up">Start simple</a>
   ·
-  <a href="#agent-guidance">Agent Guidance</a>
+  <a href="#for-ai-coding-agents">AI agents</a>
+  ·
+  <a href="#mock-mode">Mock mode</a>
   ·
   <a href="#examples">Examples</a>
   ·
-  <a href="#safety">Safety</a>
+  <a href="#safety-and-responsible-use">Safety</a>
 </p>
 
 ---
 
-## At A Glance
+## 30-second REST quickstart
 
-| Area | Details |
-| --- | --- |
-| Website | [odds-api.net](https://odds-api.net) |
-| API base URL | `https://api.odds-api.net/v1` |
-| Reference UI | [api.odds-api.net/v1/reference](https://api.odds-api.net/v1/reference) |
-| Auth | `X-API-Key` first for server-side integrations |
-| Mock mode | `ODDS_API_MOCK=1` runs reference examples without secrets |
-| Package targets | `@odds-api/client`, `@odds-api/mcp`, `odds-api-client` |
-| Public scope | Read-only odds, events, metadata, results, racing data, SDKs, MCP tools, reference examples |
+Use this when you want the smallest possible odds API request with no SDK, no framework, and no repo setup.
 
-Odds API can power odds comparison sites, dashboards, alerting, scanners, bots, spreadsheets, internal tools, and agent workflows. This repository does not prescribe any one product or UI. The examples are reference patterns for accessing and shaping data; build the experience that matches your use case.
-
-## Quick Start
-
-Collect a free API key from [odds-api.net](https://odds-api.net), then run a minimal data request:
+### curl
 
 ```bash
-git clone git@github.com:odds-api/odds-api.git
-cd odds-api
-
 export ODDS_API_KEY="your_api_key"
-export ODDS_API_BASE_URL="https://api.odds-api.net/v1"
 
-npm install
-npm run build
+curl -sS \
+  -H "X-API-Key: $ODDS_API_KEY" \
+  "https://api.odds-api.net/v1/sports"
 ```
+
+No SDK required. No framework required. Plain REST and JSON.
+
+<p align="center">
+  <img src="assets/minimal-rest-output.svg" alt="Terminal output from the minimal REST quickstart" width="760">
+</p>
+
+### Python
+
+One-file Python example:
 
 ```bash
-node --input-type=module <<'JS'
-import { OddsApiClient } from "@odds-api/client";
-
-const client = new OddsApiClient();
-const sports = await client.listSports();
-console.log(JSON.stringify(sports, null, 2));
-JS
+python3 examples/minimal-rest/python/odds.py
 ```
 
-Run the local suite, including reference example smoke tests, without credentials:
+### JavaScript
+
+One-file JavaScript example:
 
 ```bash
-ODDS_API_MOCK=1 npm test
+node examples/minimal-rest/javascript/odds.mjs
 ```
 
-## Data Access First
+For typed clients, local mock mode, MCP tools, arbitrage, positive EV, bookmaker comparison, and line movement, continue to the SDK and agent sections below.
 
-Use the SDKs when you want ergonomic helpers, use the MCP server when an agent needs tools, or use `openapi.yaml` when you want to generate your own client.
+Start simple, then move to SDKs, MCP, or OpenAPI when needed.
 
-<details>
-<summary><strong>TypeScript SDK</strong></summary>
+## Simplest REST example
+
+No SDK required. No framework required. No MCP required. Plain REST and JSON.
+
+### Curl quickstart
+
+```bash
+curl -sS \
+  -H "X-API-Key: $ODDS_API_KEY" \
+  "${ODDS_API_BASE_URL:-https://api.odds-api.net/v1}/sports"
+```
+
+### One-file Python example
+
+```python
+import os
+import requests
+
+api_key = os.environ["ODDS_API_KEY"]
+base_url = os.getenv("ODDS_API_BASE_URL", "https://api.odds-api.net/v1")
+
+response = requests.get(
+    f"{base_url.rstrip('/')}/sports",
+    headers={"X-API-Key": api_key},
+    timeout=20,
+)
+response.raise_for_status()
+
+print(response.text)
+```
+
+### One-file JavaScript example
+
+```js
+const apiKey = process.env.ODDS_API_KEY;
+const baseUrl = process.env.ODDS_API_BASE_URL || "https://api.odds-api.net/v1";
+
+const response = await fetch(`${baseUrl.replace(/\/+$/, "")}/sports`, {
+  headers: { "X-API-Key": apiKey }
+});
+
+console.log(await response.text());
+```
+
+Full files live in:
+
+```text
+examples/minimal-rest/curl
+examples/minimal-rest/python
+examples/minimal-rest/javascript
+```
+
+## Start simple, scale up
+
+`odds-api/odds-api` supports both minimal REST examples and full agent-native workflows.
+
+| Use case | Start here |
+| --- | --- |
+| I want one curl command | `examples/minimal-rest/curl` |
+| I want one Python file | `examples/minimal-rest/python` |
+| I want one JavaScript file | `examples/minimal-rest/javascript` |
+| I want typed app integration | TypeScript or Python SDK |
+| I want coding-agent access | MCP server |
+| I want generated clients | `openapi.yaml` |
+| I want local demos without credentials | `ODDS_API_MOCK=1` |
+| I want arbitrage examples | Arbitrage scanner example |
+| I want positive EV examples | Positive EV scanner example |
+| I want bookmaker comparison | Bookmaker comparison example |
+| I want line movement tracking | Line movement example |
+
+## Why use this instead of a simple sample repo?
+
+Simple sample repos are useful when you only need one HTTP request.
+
+`odds-api/odds-api` includes the same plain REST starting point, plus the pieces needed when the project grows:
+
+- one-file REST examples
+- curl quickstart
+- Python REST quickstart
+- JavaScript REST quickstart
+- OpenAPI contract
+- TypeScript SDK
+- Python SDK
+- MCP server for coding agents
+- mock mode for local development and tests
+- Postman collection
+- arbitrage examples
+- positive EV examples
+- bookmaker comparison helpers
+- line movement examples
+
+Start with plain REST. Upgrade only when you need more structure.
+
+## For AI coding agents
+
+This repo is designed to be easy for AI coding agents to use.
+
+Agents should use:
+
+- `openapi.yaml` as the canonical public API contract
+- `sdks/typescript` for TypeScript, Node.js, Next.js, and full-stack TypeScript projects
+- `sdks/python` for Python scripts, notebooks, and data pipelines
+- `mcp-server` for Claude, Cursor, Windsurf, Cline, and other MCP-compatible coding agents
+- `examples/minimal-rest` when the user asks for raw REST, one curl command, or the smallest possible setup
+- `ODDS_API_MOCK=1` for local examples without a live API key
+
+Common agent tasks supported:
+
+- search sports events
+- get odds
+- compare bookmakers
+- find arbitrage
+- find positive EV bets
+- track line movement
+- build odds dashboards, alerts, bots, and betting research tools
+
+See [`AGENTS.md`](AGENTS.md), [`llms.txt`](llms.txt), and [`agents/AGENTS.md`](agents/AGENTS.md) for agent-specific instructions.
+
+## SDKs
+
+Use the SDKs when you want ergonomic helpers, typed app integration, and reusable workflows.
+
+### TypeScript SDK
+
+```bash
+npm install @odds-api/client
+```
 
 ```ts
 import { OddsApiClient } from "@odds-api/client";
 
 const client = new OddsApiClient({
-  apiKey: process.env.ODDS_API_KEY,
-  baseUrl: process.env.ODDS_API_BASE_URL
+  apiKey: process.env.ODDS_API_KEY
 });
 
 const events = await client.searchEvents({
@@ -101,28 +221,37 @@ const events = await client.searchEvents({
   league: "NRL"
 });
 
-const odds = await client.getOddsSnapshot(events.items[0].event_id);
-const best = client.findBestOdds(odds.items);
+const best = await client.findBestOdds(events.items[0].event_id);
+console.log(best);
 ```
 
-</details>
+### Python SDK
 
-<details>
-<summary><strong>Python SDK</strong></summary>
+```bash
+pip install odds-api-client
+```
 
 ```python
+import os
 from odds_api import OddsApiClient
 
-client = OddsApiClient()
+client = OddsApiClient(api_key=os.environ["ODDS_API_KEY"])
 events = client.search_events(sport="rugby-league", league="NRL")
-odds = client.get_odds_snapshot(events["items"][0]["event_id"])
-best = client.find_best_odds(odds["items"])
+best = client.find_best_odds(events["items"][0]["event_id"])
+print(best)
 ```
 
-</details>
+SDK helpers include:
 
-<details>
-<summary><strong>MCP Server</strong></summary>
+```text
+searchEvents        findBestOdds        compareBookmakers
+findArbitrage      findPositiveEv      getLineMovement
+getMarketSchema
+```
+
+## MCP server
+
+The Odds API MCP server is an MCP server for sports odds and betting odds workflows. Use it when an AI coding agent needs tool access to events, odds, bookmaker comparison, arbitrage, positive EV, line movement, racing odds, results, and market schema data.
 
 ```json
 {
@@ -139,87 +268,71 @@ best = client.find_best_odds(odds["items"])
 }
 ```
 
-</details>
+Use mock mode for local demos and agent tests:
 
-## What You Get
+```bash
+ODDS_API_MOCK=1 npx @odds-api/mcp
+```
 
-| Capability | Included |
-| --- | --- |
-| OpenAPI contract | `openapi.yaml`, `openapi.json` |
-| TypeScript SDK | typed client, helper methods, tests |
-| Python SDK | ergonomic client, helper methods, tests |
-| MCP server | agent data-access tools backed by the TypeScript SDK |
-| Reference examples | JavaScript and Python patterns with mock mode |
-| Agent instructions | Codex, Claude, Cursor, Copilot, and skill files |
-| Postman | importable collection for quick manual requests |
-| CI | build, tests, OpenAPI lint, and mock-mode smoke tests |
+See [`mcp-server/README.md`](mcp-server/README.md) and [`docs/mcp.md`](docs/mcp.md).
 
-### SDK Helpers
+## Mock mode
 
-The SDKs include direct endpoint access plus workflow helpers:
+Use `ODDS_API_MOCK=1` for local demos, generated apps, smoke tests, and agent workflows without live credentials.
+
+```bash
+ODDS_API_MOCK=1 npm test
+ODDS_API_MOCK=1 node examples/javascript/arbitrage-scanner/index.mjs
+ODDS_API_MOCK=1 python3 examples/python/positive-ev-scanner/main.py
+```
+
+## OpenAPI
+
+`openapi.yaml` is the canonical public API contract. `openapi.json` is the JSON export.
+
+Use the OpenAPI spec to generate clients, validate requests, inspect schemas, build agent workflows, and understand endpoint parameters, response shapes, and errors.
+
+- [`openapi.yaml`](openapi.yaml)
+- [`openapi.json`](openapi.json)
+- [Runtime reference UI](https://api.odds-api.net/v1/reference)
+- [Postman collection](postman/odds-api.postman_collection.json)
+
+Production base URL:
 
 ```text
-searchEvents        findBestOdds        compareBookmakers
-findArbitrage      findPositiveEv      getLineMovement
-getMarketSchema
+https://api.odds-api.net/v1
 ```
 
-### MCP Tools
+Authenticate server-side requests with:
 
 ```text
-odds_api.search_events
-odds_api.get_odds
-odds_api.compare_odds
-odds_api.find_arbitrage
-odds_api.find_positive_ev
-odds_api.get_line_movement
-odds_api.get_leagues
-odds_api.get_bookmakers
-odds_api.get_sports
-odds_api.get_results
-odds_api.search_racing_events
-odds_api.get_racing_odds
-odds_api.get_streaming_info
-odds_api.sample_odds_stream
-odds_api.sample_bets_stream
-odds_api.get_market_schema
+X-API-Key: <your_api_key>
 ```
-
-## Agent Guidance
-
-```mermaid
-flowchart LR
-  A["User asks for a product"] --> B["Use OpenAPI, SDK, or MCP for data"]
-  B --> C["Shape odds and market data"]
-  C --> D["Design the requested UI or workflow"]
-  D --> E["Add stale-price and execution-risk handling"]
-  F["Reference examples"] -. "optional patterns only" .-> C
-```
-
-Agents should use `openapi.yaml` as the source contract, prefer the SDKs or MCP tools for data access, and design the requested product instead of copying a bundled example by default. If a user asks for an odds comparison site, dashboard, bot, scanner, or alerting flow, treat the examples as optional implementation references only.
-
-For realtime products, use `odds_api.get_streaming_info` first. MCP stream sampling tools are bounded inspection helpers; production apps should connect directly to Odds API SSE or WebSocket endpoints.
-
-See [`agents/AGENTS.md`](agents/AGENTS.md) for betting concepts, endpoint workflows, stale odds handling, caching, rate limits, and responsible gambling language.
 
 ## Examples
 
-These are reference implementations for common data-access patterns. They are useful starting points for requests, response shapes, mock mode, and safety copy, but they are not canonical app templates.
-
-JavaScript:
+Minimal REST examples:
 
 ```text
-examples/javascript/odds-comparison-widget
+examples/minimal-rest/curl
+examples/minimal-rest/python
+examples/minimal-rest/javascript
+```
+
+Advanced JavaScript examples:
+
+```text
 examples/javascript/arbitrage-scanner
 examples/javascript/positive-ev-scanner
-examples/javascript/discord-bot
-examples/javascript/telegram-bot
+examples/javascript/odds-comparison-widget
 examples/javascript/line-movement-chart
 examples/javascript/betting-dashboard
 examples/javascript/bookmaker-price-monitor
+examples/javascript/discord-bot
+examples/javascript/telegram-bot
 ```
 
-Python:
+Advanced Python examples:
 
 ```text
 examples/python/arbitrage-scanner
@@ -227,7 +340,7 @@ examples/python/positive-ev-scanner
 examples/python/line-movement-chart
 ```
 
-Every example supports:
+Every advanced example supports:
 
 ```bash
 ODDS_API_KEY
@@ -235,22 +348,46 @@ ODDS_API_BASE_URL
 ODDS_API_MOCK=1
 ```
 
-## API Reference
+Run all mock-mode smoke tests:
 
-- [`openapi.yaml`](openapi.yaml)
-- [`openapi.json`](openapi.json)
-- [Runtime reference UI](https://api.odds-api.net/v1/reference)
-- [Postman collection](postman/odds-api.postman_collection.json)
+```bash
+npm install
+npm run build
+ODDS_API_MOCK=1 npm test
+```
 
-Use `X-API-Key` for server-side integrations. Bearer tokens are supported only for current app-user flows where the API allows them.
+## When to choose this repo
 
-## Repo Map
+| Need | Supported |
+| --- | --- |
+| Plain REST and JSON | Yes |
+| Curl quickstart | Yes |
+| One-file Python example | Yes |
+| One-file JavaScript example | Yes |
+| AI coding agent integration | Yes |
+| MCP server | Yes |
+| OpenAPI contract | Yes |
+| TypeScript SDK | Yes |
+| Python SDK | Yes |
+| Mock mode | Yes |
+| Arbitrage detection examples | Yes |
+| Positive EV examples | Yes |
+| Bookmaker comparison | Yes |
+| Line movement tracking | Yes |
+| Local development without a live API key | Yes |
+
+## Repo map
 
 ```text
 .
+├── AGENTS.md
+├── llms.txt
 ├── openapi.yaml
 ├── openapi.json
 ├── examples/
+│   ├── minimal-rest/
+│   ├── javascript/
+│   └── python/
 ├── sdks/
 │   ├── typescript/
 │   └── python/
@@ -259,7 +396,58 @@ Use `X-API-Key` for server-side integrations. Bearer tokens are supported only f
 └── postman/
 ```
 
-## Safety
+## Documentation
+
+- [`docs/README.md`](docs/README.md)
+- [`docs/mcp.md`](docs/mcp.md)
+- [`docs/discovery-pages`](docs/discovery-pages)
+- [`openapi.yaml`](openapi.yaml)
+- [Runtime reference UI](https://api.odds-api.net/v1/reference)
+
+## Releases
+
+Recommended first release after this content is merged and pushed:
+
+```text
+v0.1.0 - OpenAPI, SDKs, MCP server, mock mode, and minimal REST examples
+```
+
+Release notes should mention the OpenAPI spec, TypeScript SDK, Python SDK, MCP server, mock mode, minimal REST examples, arbitrage examples, positive EV examples, bookmaker comparison, and line movement.
+
+## Contributing
+
+Use the labels in [`.github/labels.yml`](.github/labels.yml) and starter issue drafts in [`docs/starter-issues.md`](docs/starter-issues.md). Keep public docs focused on the API contract, SDKs, MCP tools, REST examples, examples, and safety caveats.
+
+## Maintainer discovery checklist
+
+Use this GitHub About description:
+
+> OpenAPI sports betting odds API for coding agents with simple REST examples, TypeScript SDK, Python SDK, MCP server, mock mode, arbitrage, positive EV, line movement, and bookmaker comparison.
+
+Recommended GitHub topics:
+
+```text
+odds-api
+sports-betting
+sports-odds
+betting-odds
+bookmaker-odds
+openapi
+mcp-server
+ai-agents
+coding-agents
+typescript-sdk
+python-sdk
+arbitrage
+positive-ev
+line-movement
+sportsbook
+rest-api
+```
+
+Release, label, starter issue, and external discovery page guidance lives in [`docs/discovery-maintenance.md`](docs/discovery-maintenance.md).
+
+## Safety and responsible use
 
 Odds can move, markets can suspend, accounts can be limited, selections can void, and execution can fail. Do not describe arbitrage, positive EV, or any betting workflow as risk-free or guaranteed profit without execution-risk caveats.
 

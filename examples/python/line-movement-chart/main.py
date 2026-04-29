@@ -34,8 +34,10 @@ client = OddsApiClient(
 
 history = client.get_line_movement("event-1001", "moneyline:home", price_type="odds")
 print("# Line movement")
+print(f"Series: {len(history['series'])}")
 for series in history["series"]:
-    print(series["bookmaker_name"])
+    print(f"Bookmaker: {series['bookmaker_name']}")
+    print(f"Points: {len(series['points'])}")
     for point in series["points"]:
         print(f"  {point['tick_ts']}: {point['odds']}")
-print("Note: line movement charts can lag live markets. Verify before user-facing alerts.")
+print("Note: line movement charts can lag live markets. Verify stale odds, suspensions, and rate limits before user-facing alerts.")

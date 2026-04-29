@@ -1,14 +1,35 @@
 openapi: 3.1.0
 info:
   title: Odds API
-  description: 'Public V1 reference for customer API endpoints. Published families:
-    meta, control, metadata, events, odds, racing-events, racing-odds, bets, results.
-    Only explicitly allowlisted operations are published here. Future endpoints remain
-    hidden until they are added to PUBLIC_REFERENCE_FAMILIES in src/v1/app.py. Use
-    API-key authentication first for server-side integrations. App bearer tokens are
-    supported for current app-user flows where the endpoint allows them. Handle 429
-    rate limits, stale timestamps, empty odds arrays, and suspended markets in every
-    client.'
+  description: 'The Odds API V1 provides sports and racing events, bookmaker odds,
+    live price updates, betting opportunity
+
+    snapshots, and result lookups for production integrations.
+
+
+    Authenticate every request with `X-API-Key: <your_api_key>` unless an endpoint
+    explicitly states it is public.
+
+    Use `https://api.odds-api.net/v1` as the production base URL.
+
+
+    Snapshot endpoints return JSON and include timestamps or resume tokens when live
+    updates are available.
+
+    `/stream` endpoints use Server-Sent Events (`text/event-stream`) and `/ws` endpoints
+    use WebSockets. Stream
+
+    messages use the same shape in both transports: an event name such as `delta`,
+    `heartbeat`, or `resync`, plus a
+
+    JSON payload. Store the latest `resume` value and pass it back as `since` after
+    reconnecting.
+
+
+    Odds can change quickly. Check `as_of_ts_ms`, handle empty arrays, suspended selections,
+    rate limits, and stale
+
+    prices before displaying or acting on any betting data.'
   version: 1.0.0
   license:
     name: Proprietary
@@ -40,335 +61,158 @@ paths:
   /:
     get:
       tags:
-      - meta
-      summary: Root
+      - Start here
+      summary: 'Start here: API metadata'
       operationId: root__get
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
-              schema: {}
-        '401': &id001
+              schema:
+                $ref: '#/components/schemas/ApiRootResponse'
+        '400': &id001
+          description: Invalid request parameters or body.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401': &id002
           description: Missing or invalid credentials.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '403': &id002
+        '403': &id003
           description: Credentials are valid but do not allow this resource.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '404': &id003
+        '404': &id004
           description: Resource was not found.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '429': &id004
+        '429': &id005
           description: Rate limit exceeded.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RateLimitResponse'
-        '500': &id005
+        '500': &id006
           description: Unexpected server error.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
+      description: Returns the API name, version, OpenAPI document URL, and hosted
+        reference URL.
       security: []
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /me:
     get:
       tags:
-      - control
-      summary: Me
+      - Account
+      summary: 'Account: Current identity'
       operationId: me_me_get
-      security: &id006
+      security: &id007
       - ApiKeyAuth: []
-      - BearerAuth: []
-      parameters:
-      - name: api_key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Api Key
-      - name: key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Key
-      - name: id_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
+      parameters: []
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
-              schema: {}
-        '422':
-          description: Validation Error
-          content:
-            application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
+                $ref: '#/components/schemas/ApiIdentityResponse'
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Returns the authenticated API identity and enabled product capabilities
+        for the supplied key.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /usage:
     get:
       tags:
-      - control
-      summary: Usage
+      - Account
+      summary: 'Account: Usage'
       operationId: usage_usage_get
-      security: *id006
-      parameters:
-      - name: api_key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Api Key
-      - name: key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Key
-      - name: id_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
+      security: *id007
+      parameters: []
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
-              schema: {}
-        '422':
-          description: Validation Error
-          content:
-            application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
+                $ref: '#/components/schemas/UsageResponse'
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Returns quota and usage counters for the supplied API key.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /limits:
     get:
       tags:
-      - control
-      summary: Limits
+      - Account
+      summary: 'Account: Limits'
       operationId: limits_limits_get
-      security: *id006
-      parameters:
-      - name: api_key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Api Key
-      - name: key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Key
-      - name: id_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
+      security: *id007
+      parameters: []
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
-              schema: {}
-        '422':
-          description: Validation Error
-          content:
-            application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
+                $ref: '#/components/schemas/LimitsResponse'
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Returns contract-level request and stream limits that clients should
+        respect.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /sports:
     get:
       tags:
-      - metadata
-      summary: Sports
+      - Catalog
+      summary: 'Catalog: Sports'
       operationId: sports_sports_get
-      security: *id006
-      parameters:
-      - name: api_key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Api Key
-      - name: key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Key
-      - name: id_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
+      security: *id007
+      parameters: []
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
-              schema: {}
-        '422':
-          description: Validation Error
-          content:
-            application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
+                $ref: '#/components/schemas/StringListResponse'
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Lists sports with event and odds coverage.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /leagues:
     get:
       tags:
-      - metadata
-      summary: Leagues
+      - Catalog
+      summary: 'Catalog: Leagues'
       operationId: leagues_leagues_get
-      security: *id006
+      security: *id007
       parameters:
       - name: sport
         in: query
@@ -378,143 +222,116 @@ paths:
           - type: string
           - type: 'null'
           title: Sport
-      - name: api_key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Api Key
-      - name: key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Key
-      - name: id_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
-              schema: {}
-        '422':
-          description: Validation Error
-          content:
-            application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
+                $ref: '#/components/schemas/StringListResponse'
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Lists available leagues. Pass `sport` to narrow the response.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /bookmakers:
     get:
       tags:
-      - metadata
-      summary: Bookmakers
+      - Catalog
+      summary: 'Catalog: Bookmakers'
       operationId: bookmakers_bookmakers_get
-      security: *id006
+      security: *id007
       parameters:
-      - name: api_key
+      - name: country_code
         in: query
         required: false
         schema:
           anyOf:
           - type: string
           - type: 'null'
-          title: Api Key
-      - name: key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Key
-      - name: id_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
+          description: Optional comma-separated country code filter, for example `AU`
+            or `AU,UK`.
+          title: Country Code
+        description: Optional comma-separated country code filter, for example `AU`
+          or `AU,UK`.
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
-              schema: {}
-        '422':
-          description: Validation Error
+              schema:
+                $ref: '#/components/schemas/BookmakersResponse'
+              examples:
+                default:
+                  summary: 'Catalog: Bookmakers'
+                  value:
+                    items:
+                    - bookmaker: bet365
+                      country_codes:
+                      - AU
+                      - UK
+                    - bookmaker: pinnacle
+                      country_codes:
+                      - US
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Lists active bookmakers accepted by bookmaker filters across odds
+        and betting endpoints. Each item includes the country codes where that bookmaker
+        is available. Pass `country_code=AU` or `country_code=AU,UK` to filter the
+        catalog.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /bookmakers/countries:
+    get:
+      tags:
+      - Catalog
+      summary: 'Catalog: Bookmaker countries'
+      operationId: bookmaker_countries_bookmakers_countries_get
+      security: *id007
+      parameters: []
+      responses:
+        '200':
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
+                $ref: '#/components/schemas/BookmakerCountriesResponse'
+              examples:
+                default:
+                  summary: 'Catalog: Bookmaker countries'
+                  value:
+                    items:
+                    - country_code: AU
+                      country: Australia
+                      bookmakers:
+                      - bet365
+                      - sportsbet
+                    - country_code: UK
+                      country: United Kingdom
+                      bookmakers:
+                      - bet365
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Lists country codes represented in the active bookmaker catalog
+        and the bookmakers available in each country.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /events:
     get:
       tags:
-      - events
-      summary: List Events
+      - Sports events
+      summary: 'Sports events: Search'
       operationId: list_events_events_get
-      security: *id006
+      security: *id007
       parameters:
       - name: sport
         in: query
@@ -571,46 +388,6 @@ paths:
           minimum: 1
           default: 200
           title: Limit
-      - name: api_key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Api Key
-      - name: key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Key
-      - name: id_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
       responses:
         '200':
           description: Successful Response
@@ -620,7 +397,7 @@ paths:
                 $ref: '#/components/schemas/EventListResponse'
               examples:
                 default:
-                  summary: List Events
+                  summary: 'Sports events: Search'
                   value:
                     items:
                     - event_id: '3704597661'
@@ -633,28 +410,22 @@ paths:
                         bet365: odds-doc-id
                     next_cursor: null
                     count: 1
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Searches sports events by sport, league, team, time window, status,
+        bookmaker coverage, and pagination cursor.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /events/{event_id}:
     get:
       tags:
-      - events
-      summary: Get Event
+      - Sports events
+      summary: 'Sports events: Event details'
       operationId: get_event_events__event_id__get
-      security: *id006
+      security: *id007
       parameters:
       - name: event_id
         in: path
@@ -662,46 +433,6 @@ paths:
         schema:
           type: string
           title: Event Id
-      - name: api_key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Api Key
-      - name: key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Key
-      - name: id_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
       responses:
         '200':
           description: Successful Response
@@ -709,28 +440,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EventDetail'
-        '422':
-          description: Validation Error
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Returns the current event record for a canonical sports event ID.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /events/{event_id}/bookmakers:
+    get:
+      tags:
+      - Sports events
+      summary: 'Sports events: Bookmaker coverage'
+      operationId: event_bookmakers_events__event_id__bookmakers_get
+      security: *id007
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Event Id
+      responses:
+        '200':
+          description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
+                $ref: '#/components/schemas/BookmakersResponse'
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Lists bookmakers currently attached to a sports event.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /events/{event_id}/odds/snapshot:
     get:
       tags:
-      - odds
-      summary: Odds Snapshot
+      - Sports odds
+      summary: 'Event odds: Snapshot'
       operationId: odds_snapshot_events__event_id__odds_snapshot_get
-      security: *id006
+      security: *id007
       parameters:
       - name: event_id
         in: path
@@ -797,46 +550,6 @@ paths:
           description: Comma-separated periods allow-list
           title: Periods
         description: Comma-separated periods allow-list
-      - name: api_key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Api Key
-      - name: key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Key
-      - name: id_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
       responses:
         '200':
           description: Successful Response
@@ -846,7 +559,7 @@ paths:
                 $ref: '#/components/schemas/OddsSnapshotResponse'
               examples:
                 default:
-                  summary: Odds Snapshot
+                  summary: 'Event odds: Snapshot'
                   value:
                     event_id: '3704597661'
                     as_of_ts_ms: 1760000000000
@@ -865,28 +578,23 @@ paths:
                       is_available: true
                     next_cursor: null
                     resume: 1760000000000-0
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Returns the current odds lines for one event. Use filters to narrow
+        bookmakers, market types, market keys, and periods. Persist `resume` when
+        you plan to subscribe to updates.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /events/{event_id}/odds/stream:
     get:
       tags:
-      - odds
-      summary: Odds Stream
+      - Sports odds
+      summary: 'Event odds: Stream (SSE)'
       operationId: odds_stream_events__event_id__odds_stream_get
-      security: *id006
+      security: *id007
       parameters:
       - name: event_id
         in: path
@@ -969,74 +677,295 @@ paths:
           minimum: 1
           default: 500
           title: Max Batch
-      - name: api_key
+      responses:
+        '200':
+          description: Server-Sent Events stream. Each message has an event name and
+            JSON data payload.
+          content:
+            text/event-stream:
+              schema:
+                type: object
+                description: Decoded stream message. SSE transports this as an event
+                  line plus JSON data; WebSockets send it as JSON.
+                required:
+                - event
+                - data
+                properties:
+                  event:
+                    type: string
+                    enum:
+                    - delta
+                    - heartbeat
+                    - resync
+                  data:
+                    oneOf:
+                    - $ref: '#/components/schemas/OddsStreamEvent'
+                    - $ref: '#/components/schemas/StreamHeartbeat'
+                    - $ref: '#/components/schemas/StreamResyncEvent'
+              examples:
+                delta:
+                  summary: Decoded delta message
+                  value:
+                    event: delta
+                    data:
+                      resume: 1760000000000-0
+                heartbeat:
+                  summary: Decoded heartbeat message
+                  value:
+                    event: heartbeat
+                    data: {}
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Server-Sent Events feed for odds changes on one event. Subscribe
+        after reading the snapshot and pass the snapshot `resume` value as `since`
+        to receive catch-up changes when available.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /events/{event_id}/odds/ws:
+    get:
+      operationId: websocket_events_event_id_odds_ws
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Event Id
+      - name: bookmakers
         in: query
         required: false
         schema:
           anyOf:
           - type: string
           - type: 'null'
-          title: Api Key
-      - name: key
+          description: Comma-separated bookmaker allow-list
+          title: Bookmakers
+        description: Comma-separated bookmaker allow-list
+      - name: types
         in: query
         required: false
         schema:
           anyOf:
           - type: string
           - type: 'null'
-          title: Key
-      - name: id_token
+          description: Comma-separated type allow-list
+          title: Types
+        description: Comma-separated type allow-list
+      - name: market_keys
         in: query
         required: false
         schema:
           anyOf:
           - type: string
           - type: 'null'
-          title: Id Token
-      - name: access_token
+          description: Comma-separated market_key allow-list
+          title: Market Keys
+        description: Comma-separated market_key allow-list
+      - name: periods
         in: query
         required: false
         schema:
           anyOf:
           - type: string
           - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
+          description: Comma-separated periods allow-list
+          title: Periods
+        description: Comma-separated periods allow-list
+      - name: since
+        in: query
         required: false
         schema:
           anyOf:
           - type: string
           - type: 'null'
-          title: Session
+          description: Redis stream ID
+          title: Since
+        description: Redis stream ID
+      - name: catchup
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+          title: Catchup
+      - name: heartbeat_sec
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 120
+          minimum: 5
+          default: 15
+          title: Heartbeat Sec
+      - name: max_batch
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 2000
+          minimum: 1
+          default: 500
+          title: Max Batch
+      responses:
+        '101':
+          description: WebSocket connection established. Messages are JSON objects.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Decoded stream message. SSE transports this as an event
+                  line plus JSON data; WebSockets send it as JSON.
+                required:
+                - event
+                - data
+                properties:
+                  event:
+                    type: string
+                    enum:
+                    - delta
+                    - heartbeat
+                    - resync
+                  data:
+                    oneOf:
+                    - $ref: '#/components/schemas/OddsStreamEvent'
+                    - $ref: '#/components/schemas/StreamHeartbeat'
+                    - $ref: '#/components/schemas/StreamResyncEvent'
+              examples:
+                delta:
+                  summary: Delta message
+                  value:
+                    event: delta
+                    data:
+                      resume: 1760000000000-0
+                heartbeat:
+                  summary: Heartbeat message
+                  value:
+                    event: heartbeat
+                    data: {}
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      x-websocket: true
+      x-stream-equivalent: /events/{event_id}/odds/stream
+      tags:
+      - Sports odds
+      summary: 'Event odds: Stream (WebSocket)'
+      description: WebSocket feed for odds changes on one event. Messages use the
+        same `delta`, `heartbeat`, and `resync` payloads as the SSE stream.
+      security: *id007
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /events/{event_id}/odds/history:
+    get:
+      tags:
+      - Sports odds
+      summary: 'Event odds history: Snapshot'
+      operationId: odds_history_events__event_id__odds_history_get
+      security: *id007
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Event Id
+      - name: selection_key
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          title: Selection Key
+      - name: market_group_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Market Group Id
+      - name: bookmakers
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Comma-separated bookmaker allow-list
+          title: Bookmakers
+        description: Comma-separated bookmaker allow-list
+      - name: from_ts
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: ISO8601 UTC start
+          title: From Ts
+        description: ISO8601 UTC start
+      - name: to_ts
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: ISO8601 UTC end
+          title: To Ts
+        description: ISO8601 UTC end
+      - name: price_type
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: ^(odds|odds_no_vig|fair_odds)$
+          default: odds
+          title: Price Type
+      - name: include_unavailable
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Include Unavailable
+      - name: limit_points_per_bookmaker
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 10000
+          minimum: 1
+          default: 2000
+          title: Limit Points Per Bookmaker
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
-              schema: {}
-        '422':
-          description: Validation Error
-          content:
-            application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
+                $ref: '#/components/schemas/OddsHistoryResponse'
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Returns line movement for a single selection across bookmakers
+        and a time range. Use `selection_key` from an odds snapshot response.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /events/{event_id}/odds/history/stream:
     get:
       tags:
-      - odds
-      summary: Odds History Stream
+      - Sports odds
+      summary: 'Event odds history: Stream (SSE)'
       operationId: odds_history_stream_events__event_id__odds_history_stream_get
-      security: *id006
+      security: *id007
       parameters:
       - name: event_id
         in: path
@@ -1119,74 +1048,55 @@ paths:
           minimum: 1
           default: 500
           title: Max Batch
-      - name: api_key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Api Key
-      - name: key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Key
-      - name: id_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
       responses:
         '200':
-          description: Successful Response
+          description: Server-Sent Events stream. Each message has an event name and
+            JSON data payload.
           content:
-            application/json:
-              schema: {}
-        '422':
-          description: Validation Error
-          content:
-            application/json:
+            text/event-stream:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
+                type: object
+                description: Decoded stream message. SSE transports this as an event
+                  line plus JSON data; WebSockets send it as JSON.
+                required:
+                - event
+                - data
+                properties:
+                  event:
+                    type: string
+                    enum:
+                    - delta
+                    - heartbeat
+                    - resync
+                  data:
+                    oneOf:
+                    - $ref: '#/components/schemas/OddsHistoryStreamEvent'
+                    - $ref: '#/components/schemas/StreamHeartbeat'
+                    - $ref: '#/components/schemas/StreamResyncEvent'
+              examples:
+                delta:
+                  summary: Decoded delta message
+                  value:
+                    event: delta
+                    data:
+                      resume: 1760000000000-0
+                heartbeat:
+                  summary: Decoded heartbeat message
+                  value:
+                    event: heartbeat
+                    data: {}
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Server-Sent Events feed for line movement on one selection. This
+        is useful for charts that should update while an event market is moving.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
-  /events/{event_id}/odds/history:
+  /events/{event_id}/odds/history/ws:
     get:
-      tags:
-      - odds
-      summary: Odds History
-      operationId: odds_history_events__event_id__odds_history_get
-      security: *id006
+      operationId: websocket_events_event_id_odds_history_ws
       parameters:
       - name: event_id
         in: path
@@ -1219,241 +1129,21 @@ paths:
           description: Comma-separated bookmaker allow-list
           title: Bookmakers
         description: Comma-separated bookmaker allow-list
-      - name: from_ts
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          description: ISO8601 UTC start
-          title: From Ts
-        description: ISO8601 UTC start
-      - name: to_ts
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          description: ISO8601 UTC end
-          title: To Ts
-        description: ISO8601 UTC end
       - name: price_type
         in: query
         required: false
         schema:
           type: string
           pattern: ^(odds|odds_no_vig|fair_odds)$
-          default: odds
+          default: odds_no_vig
           title: Price Type
       - name: include_unavailable
         in: query
         required: false
         schema:
           type: boolean
-          default: false
+          default: true
           title: Include Unavailable
-      - name: limit_points_per_bookmaker
-        in: query
-        required: false
-        schema:
-          type: integer
-          maximum: 10000
-          minimum: 1
-          default: 2000
-          title: Limit Points Per Bookmaker
-      - name: api_key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Api Key
-      - name: key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Key
-      - name: id_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OddsHistoryResponse'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
-      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
-  /bets/snapshot:
-    get:
-      tags:
-      - bets
-      summary: Snapshot
-      operationId: snapshot_bets_snapshot_get
-      security: *id006
-      parameters:
-      - name: strategies
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          description: Comma-separated strategies or 'all'
-          default: all
-          title: Strategies
-        description: Comma-separated strategies or 'all'
-      - name: limit
-        in: query
-        required: false
-        schema:
-          type: integer
-          maximum: 20000
-          minimum: 1
-          default: 2000
-          title: Limit
-      - name: event_id
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Event Id
-      - name: api_key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Api Key
-      - name: key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Key
-      - name: id_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
-              examples:
-                default:
-                  summary: Snapshot
-                  value:
-                    items:
-                    - id: example-positive-ev
-                      strategy: pos_ev
-                      event_id: '3704597661'
-                      bookmaker_name: Bet365
-                      selection_key: moneyline:home
-                      odds: 2.1
-                      fair_odds: 1.95
-                      ev: 7.7
-                    resume:
-                      pos_ev: 1760000000000-0
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
-      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
-  /bets/stream:
-    get:
-      tags:
-      - bets
-      summary: Stream
-      operationId: stream_bets_stream_get
-      security: *id006
-      parameters:
-      - name: strategies
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          default: all
-          title: Strategies
       - name: since
         in: query
         required: false
@@ -1461,9 +1151,9 @@ paths:
           anyOf:
           - type: string
           - type: 'null'
-          description: Resume token from /snapshot (JSON mapping strategy->id)
+          description: Redis stream ID
           title: Since
-        description: Resume token from /snapshot (JSON mapping strategy->id)
+        description: Redis stream ID
       - name: catchup
         in: query
         required: false
@@ -1480,150 +1170,73 @@ paths:
           minimum: 5
           default: 15
           title: Heartbeat Sec
-      - name: api_key
+      - name: max_batch
         in: query
         required: false
         schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Api Key
-      - name: key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Key
-      - name: id_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
+          type: integer
+          maximum: 2000
+          minimum: 1
+          default: 500
+          title: Max Batch
       responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema: {}
-        '422':
-          description: Validation Error
+        '101':
+          description: WebSocket connection established. Messages are JSON objects.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
-      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
-  /events/{event_id}/results:
-    get:
+                type: object
+                description: Decoded stream message. SSE transports this as an event
+                  line plus JSON data; WebSockets send it as JSON.
+                required:
+                - event
+                - data
+                properties:
+                  event:
+                    type: string
+                    enum:
+                    - delta
+                    - heartbeat
+                    - resync
+                  data:
+                    oneOf:
+                    - $ref: '#/components/schemas/OddsHistoryStreamEvent'
+                    - $ref: '#/components/schemas/StreamHeartbeat'
+                    - $ref: '#/components/schemas/StreamResyncEvent'
+              examples:
+                delta:
+                  summary: Delta message
+                  value:
+                    event: delta
+                    data:
+                      resume: 1760000000000-0
+                heartbeat:
+                  summary: Heartbeat message
+                  value:
+                    event: heartbeat
+                    data: {}
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      x-websocket: true
+      x-stream-equivalent: /events/{event_id}/odds/history/stream
       tags:
-      - results
-      summary: Get Event Results
-      operationId: get_event_results_events__event_id__results_get
-      security: *id006
-      parameters:
-      - name: event_id
-        in: path
-        required: true
-        schema:
-          type: string
-          title: Event Id
-      - name: api_key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Api Key
-      - name: key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Key
-      - name: id_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ResultItem'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
+      - Sports odds
+      summary: 'Event odds history: Stream (WebSocket)'
+      description: WebSocket feed for line movement on one selection. Messages mirror
+        the history SSE stream payloads.
+      security: *id007
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /racing/events:
     get:
       tags:
-      - racing-events
-      summary: List Racing Events
+      - Racing events
+      summary: 'Racing events: Search'
       operationId: list_racing_events_racing_events_get
-      security: *id006
+      security: *id007
       parameters:
       - name: race_type
         in: query
@@ -1704,46 +1317,6 @@ paths:
           minimum: 1
           default: 200
           title: Limit
-      - name: api_key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Api Key
-      - name: key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Key
-      - name: id_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
       responses:
         '200':
           description: Successful Response
@@ -1751,28 +1324,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RacingEventListResponse'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Searches upcoming and live racing events with race type, state,
+        country, status, and time filters.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /racing/events/stream:
     get:
       tags:
-      - racing-events
-      summary: Stream Racing Events
+      - Racing events
+      summary: 'Racing events: Stream (SSE)'
       operationId: stream_racing_events_racing_events_stream_get
-      security: *id006
+      security: *id007
       parameters:
       - name: since
         in: query
@@ -1809,74 +1376,148 @@ paths:
           minimum: 1
           default: 500
           title: Max Batch
-      - name: api_key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Api Key
-      - name: key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Key
-      - name: id_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
       responses:
         '200':
-          description: Successful Response
+          description: Server-Sent Events stream. Each message has an event name and
+            JSON data payload.
           content:
-            application/json:
-              schema: {}
-        '422':
-          description: Validation Error
+            text/event-stream:
+              schema:
+                type: object
+                description: Decoded stream message. SSE transports this as an event
+                  line plus JSON data; WebSockets send it as JSON.
+                required:
+                - event
+                - data
+                properties:
+                  event:
+                    type: string
+                    enum:
+                    - delta
+                    - heartbeat
+                    - resync
+                  data:
+                    oneOf:
+                    - $ref: '#/components/schemas/RacingEventsStreamEvent'
+                    - $ref: '#/components/schemas/StreamHeartbeat'
+                    - $ref: '#/components/schemas/StreamResyncEvent'
+              examples:
+                delta:
+                  summary: Decoded delta message
+                  value:
+                    event: delta
+                    data:
+                      resume: 1760000000000-0
+                heartbeat:
+                  summary: Decoded heartbeat message
+                  value:
+                    event: heartbeat
+                    data: {}
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Server-Sent Events feed for racing event inserts, updates, and
+        removals.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /racing/events/ws:
+    get:
+      operationId: websocket_racing_events_ws
+      parameters:
+      - name: since
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Redis stream ID
+          title: Since
+        description: Redis stream ID
+      - name: catchup
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+          title: Catchup
+      - name: heartbeat_sec
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 120
+          minimum: 5
+          default: 15
+          title: Heartbeat Sec
+      - name: max_batch
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 2000
+          minimum: 1
+          default: 500
+          title: Max Batch
+      responses:
+        '101':
+          description: WebSocket connection established. Messages are JSON objects.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
+                type: object
+                description: Decoded stream message. SSE transports this as an event
+                  line plus JSON data; WebSockets send it as JSON.
+                required:
+                - event
+                - data
+                properties:
+                  event:
+                    type: string
+                    enum:
+                    - delta
+                    - heartbeat
+                    - resync
+                  data:
+                    oneOf:
+                    - $ref: '#/components/schemas/RacingEventsStreamEvent'
+                    - $ref: '#/components/schemas/StreamHeartbeat'
+                    - $ref: '#/components/schemas/StreamResyncEvent'
+              examples:
+                delta:
+                  summary: Delta message
+                  value:
+                    event: delta
+                    data:
+                      resume: 1760000000000-0
+                heartbeat:
+                  summary: Heartbeat message
+                  value:
+                    event: heartbeat
+                    data: {}
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      x-websocket: true
+      x-stream-equivalent: /racing/events/stream
+      tags:
+      - Racing events
+      summary: 'Racing events: Stream (WebSocket)'
+      description: WebSocket feed for racing event inserts, updates, and removals.
+      security: *id007
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /racing/events/{event_id}:
     get:
       tags:
-      - racing-events
-      summary: Get Racing Event
+      - Racing events
+      summary: 'Racing events: Event details'
       operationId: get_racing_event_racing_events__event_id__get
-      security: *id006
+      security: *id007
       parameters:
       - name: event_id
         in: path
@@ -1884,46 +1525,6 @@ paths:
         schema:
           type: string
           title: Event Id
-      - name: api_key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Api Key
-      - name: key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Key
-      - name: id_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
       responses:
         '200':
           description: Successful Response
@@ -1931,28 +1532,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RacingEventDetail'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Returns the current racing event record for a canonical race ID.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /racing/events/{event_id}/odds:
     get:
       tags:
-      - racing-odds
-      summary: Get Racing Odds Snapshot
+      - Racing odds
+      summary: 'Racing odds: Snapshot'
       operationId: get_racing_odds_snapshot_racing_events__event_id__odds_get
-      security: *id006
+      security: *id007
       parameters:
       - name: event_id
         in: path
@@ -1970,46 +1564,6 @@ paths:
           description: Comma-separated bookmaker filter.
           title: Bookmakers
         description: Comma-separated bookmaker filter.
-      - name: api_key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Api Key
-      - name: key
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Key
-      - name: id_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
       responses:
         '200':
           description: Successful Response
@@ -2017,28 +1571,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RacingOddsSnapshotResponse'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Returns bookmaker odds snapshots for one racing event.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /racing/events/{event_id}/odds/stream:
     get:
       tags:
-      - racing-odds
-      summary: Stream Racing Odds
+      - Racing odds
+      summary: 'Racing odds: Stream (SSE)'
       operationId: stream_racing_odds_racing_events__event_id__odds_stream_get
-      security: *id006
+      security: *id007
       parameters:
       - name: event_id
         in: path
@@ -2081,69 +1628,438 @@ paths:
           minimum: 1
           default: 500
           title: Max Batch
-      - name: api_key
+      responses:
+        '200':
+          description: Server-Sent Events stream. Each message has an event name and
+            JSON data payload.
+          content:
+            text/event-stream:
+              schema:
+                type: object
+                description: Decoded stream message. SSE transports this as an event
+                  line plus JSON data; WebSockets send it as JSON.
+                required:
+                - event
+                - data
+                properties:
+                  event:
+                    type: string
+                    enum:
+                    - delta
+                    - heartbeat
+                    - resync
+                  data:
+                    oneOf:
+                    - $ref: '#/components/schemas/RacingOddsStreamEvent'
+                    - $ref: '#/components/schemas/StreamHeartbeat'
+                    - $ref: '#/components/schemas/StreamResyncEvent'
+              examples:
+                delta:
+                  summary: Decoded delta message
+                  value:
+                    event: delta
+                    data:
+                      resume: 1760000000000-0
+                heartbeat:
+                  summary: Decoded heartbeat message
+                  value:
+                    event: heartbeat
+                    data: {}
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Server-Sent Events feed for racing odds changes on one event.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /racing/events/{event_id}/odds/ws:
+    get:
+      operationId: websocket_racing_events_event_id_odds_ws
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Event Id
+      - name: since
         in: query
         required: false
         schema:
           anyOf:
           - type: string
           - type: 'null'
-          title: Api Key
-      - name: key
+          description: Redis stream ID.
+          title: Since
+        description: Redis stream ID.
+      - name: catchup
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+          title: Catchup
+      - name: heartbeat_sec
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 120
+          minimum: 5
+          default: 15
+          title: Heartbeat Sec
+      - name: max_batch
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 2000
+          minimum: 1
+          default: 500
+          title: Max Batch
+      responses:
+        '101':
+          description: WebSocket connection established. Messages are JSON objects.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Decoded stream message. SSE transports this as an event
+                  line plus JSON data; WebSockets send it as JSON.
+                required:
+                - event
+                - data
+                properties:
+                  event:
+                    type: string
+                    enum:
+                    - delta
+                    - heartbeat
+                    - resync
+                  data:
+                    oneOf:
+                    - $ref: '#/components/schemas/RacingOddsStreamEvent'
+                    - $ref: '#/components/schemas/StreamHeartbeat'
+                    - $ref: '#/components/schemas/StreamResyncEvent'
+              examples:
+                delta:
+                  summary: Delta message
+                  value:
+                    event: delta
+                    data:
+                      resume: 1760000000000-0
+                heartbeat:
+                  summary: Heartbeat message
+                  value:
+                    event: heartbeat
+                    data: {}
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      x-websocket: true
+      x-stream-equivalent: /racing/events/{event_id}/odds/stream
+      tags:
+      - Racing odds
+      summary: 'Racing odds: Stream (WebSocket)'
+      description: WebSocket feed for racing odds changes on one event.
+      security: *id007
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /bets/snapshot:
+    get:
+      tags:
+      - Betting opportunities
+      summary: 'Betting opportunities: Snapshot'
+      operationId: snapshot_bets_snapshot_get
+      security: *id007
+      parameters:
+      - name: strategies
         in: query
         required: false
         schema:
           anyOf:
           - type: string
           - type: 'null'
-          title: Key
-      - name: id_token
+          description: Comma-separated strategies or 'all'
+          default: all
+          title: Strategies
+        description: Comma-separated strategies or 'all'
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 20000
+          minimum: 1
+          default: 2000
+          title: Limit
+      - name: event_id
         in: query
         required: false
         schema:
           anyOf:
           - type: string
           - type: 'null'
-          title: Id Token
-      - name: access_token
-        in: query
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Access Token
-      - name: session
-        in: cookie
-        required: false
-        schema:
-          anyOf:
-          - type: string
-          - type: 'null'
-          title: Session
+          title: Event Id
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
-              schema: {}
-        '422':
-          description: Validation Error
+              schema:
+                $ref: '#/components/schemas/BetsSnapshotResponse'
+              examples:
+                default:
+                  summary: 'Betting opportunities: Snapshot'
+                  value:
+                    items:
+                    - id: example-positive-ev
+                      strategy: pos_ev
+                      event_id: '3704597661'
+                      bookmaker_name: Bet365
+                      selection_key: moneyline:home
+                      odds: 2.1
+                      fair_odds: 1.95
+                      ev: 7.7
+                    resume:
+                      pos_ev: 1760000000000-0
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Returns current betting opportunities by strategy. Use `strategies`,
+        `limit`, and `event_id` to keep the payload scoped to what your product needs.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /bets/stream:
+    get:
+      tags:
+      - Betting opportunities
+      summary: 'Betting opportunities: Stream (SSE)'
+      operationId: stream_bets_stream_get
+      security: *id007
+      parameters:
+      - name: strategies
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: all
+          title: Strategies
+      - name: since
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Resume token from /snapshot (JSON mapping strategy->id)
+          title: Since
+        description: Resume token from /snapshot (JSON mapping strategy->id)
+      - name: catchup
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+          title: Catchup
+      - name: heartbeat_sec
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 120
+          minimum: 5
+          default: 15
+          title: Heartbeat Sec
+      responses:
+        '200':
+          description: Server-Sent Events stream. Each message has an event name and
+            JSON data payload.
+          content:
+            text/event-stream:
+              schema:
+                type: object
+                description: Decoded stream message. SSE transports this as an event
+                  line plus JSON data; WebSockets send it as JSON.
+                required:
+                - event
+                - data
+                properties:
+                  event:
+                    type: string
+                    enum:
+                    - delta
+                    - heartbeat
+                    - resync
+                  data:
+                    oneOf:
+                    - $ref: '#/components/schemas/BetsStreamEvent'
+                    - $ref: '#/components/schemas/StreamHeartbeat'
+                    - $ref: '#/components/schemas/StreamResyncEvent'
+              examples:
+                delta:
+                  summary: Decoded delta message
+                  value:
+                    event: delta
+                    data:
+                      resume: 1760000000000-0
+                heartbeat:
+                  summary: Decoded heartbeat message
+                  value:
+                    event: heartbeat
+                    data: {}
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Server-Sent Events feed for betting opportunity inserts, updates,
+        and removals.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /bets/ws:
+    get:
+      operationId: websocket_bets_ws
+      parameters:
+      - name: strategies
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: all
+          title: Strategies
+      - name: since
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Resume token from /snapshot (JSON mapping strategy->id)
+          title: Since
+        description: Resume token from /snapshot (JSON mapping strategy->id)
+      - name: catchup
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: true
+          title: Catchup
+      - name: heartbeat_sec
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 120
+          minimum: 5
+          default: 15
+          title: Heartbeat Sec
+      responses:
+        '101':
+          description: WebSocket connection established. Messages are JSON objects.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-        '401': *id001
-        '403': *id002
-        '404': *id003
-        '429': *id004
-        '500': *id005
-      description: Public Odds API operation. Authenticate with X-API-Key where possible.
-        Check timestamps before displaying prices and handle empty, stale, or suspended
-        markets.
+                type: object
+                description: Decoded stream message. SSE transports this as an event
+                  line plus JSON data; WebSockets send it as JSON.
+                required:
+                - event
+                - data
+                properties:
+                  event:
+                    type: string
+                    enum:
+                    - delta
+                    - heartbeat
+                    - resync
+                  data:
+                    oneOf:
+                    - $ref: '#/components/schemas/BetsStreamEvent'
+                    - $ref: '#/components/schemas/StreamHeartbeat'
+                    - $ref: '#/components/schemas/StreamResyncEvent'
+              examples:
+                delta:
+                  summary: Delta message
+                  value:
+                    event: delta
+                    data:
+                      resume: 1760000000000-0
+                heartbeat:
+                  summary: Heartbeat message
+                  value:
+                    event: heartbeat
+                    data: {}
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      x-websocket: true
+      x-stream-equivalent: /bets/stream
+      tags:
+      - Betting opportunities
+      summary: 'Betting opportunities: Stream (WebSocket)'
+      description: WebSocket feed for betting opportunity inserts, updates, and removals.
+      security: *id007
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /events/{event_id}/results:
+    get:
+      tags:
+      - Results
+      summary: 'Results: Event result'
+      operationId: get_event_results_events__event_id__results_get
+      security: *id007
+      parameters:
+      - name: event_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Event Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultItem'
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Returns the latest known result for a sports event, or `pending`
+        until settled.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
 components:
   schemas:
+    BookmakersResponse:
+      properties:
+        event_id:
+          type: string
+          title: Event Id
+        items:
+          items:
+            type: string
+          type: array
+          title: Items
+      type: object
+      required:
+      - event_id
+      - items
+      title: BookmakersResponse
     EventDetail:
       properties:
         event_id:
@@ -2229,15 +2145,6 @@ components:
       required:
       - event_id
       title: EventSummary
-    HTTPValidationError:
-      properties:
-        detail:
-          items:
-            $ref: '#/components/schemas/ValidationError'
-          type: array
-          title: Detail
-      type: object
-      title: HTTPValidationError
     OddLine:
       properties:
         id:
@@ -2636,27 +2543,6 @@ components:
       - event_id
       - status
       title: ResultItem
-    ValidationError:
-      properties:
-        loc:
-          items:
-            anyOf:
-            - type: string
-            - type: integer
-          type: array
-          title: Location
-        msg:
-          type: string
-          title: Message
-        type:
-          type: string
-          title: Error Type
-      type: object
-      required:
-      - loc
-      - msg
-      - type
-      title: ValidationError
     ErrorResponse:
       type: object
       required:
@@ -2681,47 +2567,397 @@ components:
       allOf:
       - $ref: '#/components/schemas/ErrorResponse'
       description: Rate-limit response. Retry after the window or reduce polling frequency.
+    OddsStreamDelta:
+      properties:
+        op:
+          title: Op
+          type: string
+        odd:
+          $ref: '#/components/schemas/OddLine'
+      required:
+      - op
+      - odd
+      title: OddsStreamDelta
+      type: object
+    OddsStreamEvent:
+      properties:
+        event_id:
+          title: Event Id
+          type: string
+        resume:
+          title: Resume
+          type: string
+        changes:
+          items:
+            $ref: '#/components/schemas/OddsStreamDelta'
+          title: Changes
+          type: array
+      required:
+      - event_id
+      - resume
+      - changes
+      title: OddsStreamEvent
+      type: object
+    RacingOddsStreamDelta:
+      properties:
+        op:
+          title: Op
+          type: string
+        bookmaker_name:
+          title: Bookmaker Name
+          type: string
+        snapshot:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Snapshot
+      required:
+      - op
+      - bookmaker_name
+      title: RacingOddsStreamDelta
+      type: object
+    RacingOddsStreamEvent:
+      properties:
+        event_id:
+          title: Event Id
+          type: string
+        resume:
+          title: Resume
+          type: string
+        changes:
+          items:
+            $ref: '#/components/schemas/RacingOddsStreamDelta'
+          title: Changes
+          type: array
+      required:
+      - event_id
+      - resume
+      - changes
+      title: RacingOddsStreamEvent
+      type: object
+    ApiRootResponse:
+      type: object
+      required:
+      - name
+      - version
+      - openapi
+      - reference
+      properties:
+        name:
+          type: string
+          example: Odds API
+        version:
+          type: string
+          example: 1.0.0
+        openapi:
+          type: string
+          example: /v1/openapi.json
+        reference:
+          type: string
+          example: /v1/reference
+    ApiIdentityResponse:
+      type: object
+      description: Authenticated API identity and enabled product capabilities.
+      additionalProperties: true
+      properties:
+        method:
+          type: string
+          example: api_key
+        client_id:
+          type:
+          - string
+          - 'null'
+        capabilities:
+          type: object
+          additionalProperties: true
+        membership_tier:
+          type:
+          - integer
+          - 'null'
+    UsageResponse:
+      type: object
+      description: Quota and usage counters for the API key. Fields can vary by plan.
+      additionalProperties: true
+      properties:
+        period_start:
+          type:
+          - string
+          - 'null'
+        period_end:
+          type:
+          - string
+          - 'null'
+        request_count:
+          type:
+          - integer
+          - 'null'
+        request_limit:
+          type:
+          - integer
+          - 'null'
+    LimitsResponse:
+      type: object
+      required:
+      - responses
+      - sse
+      properties:
+        responses:
+          type: object
+          required:
+          - events_limit_max
+          - odds_snapshot_limit_max
+          - bets_snapshot_limit_max
+          properties:
+            events_limit_max:
+              type: integer
+              example: 1000
+            odds_snapshot_limit_max:
+              type: integer
+              example: 10000
+            bets_snapshot_limit_max:
+              type: integer
+              example: 20000
+        sse:
+          type: object
+          required:
+          - heartbeat_sec_min
+          - heartbeat_sec_max
+          - max_batch_default
+          properties:
+            heartbeat_sec_min:
+              type: integer
+              example: 5
+            heartbeat_sec_max:
+              type: integer
+              example: 120
+            max_batch_default:
+              type: integer
+              example: 500
+    StringListResponse:
+      type: object
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            type: string
+    BookmakerCountry:
+      type: object
+      required:
+      - country_code
+      - bookmakers
+      properties:
+        country_code:
+          type: string
+          example: AU
+        country:
+          type:
+          - string
+          - 'null'
+          example: Australia
+        bookmakers:
+          type: array
+          items:
+            type: string
+          description: Canonical bookmaker identifiers active for this country code.
+    BookmakerCountriesResponse:
+      type: object
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookmakerCountry'
+    BetOpportunity:
+      type: object
+      description: A normalized betting opportunity. Strategy-specific fields may
+        be present.
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        strategy:
+          type: string
+          enum:
+          - pos_ev
+          - arbitrage
+          - middles
+          - freebets
+          - pos_ev_special
+        event_id:
+          type:
+          - string
+          - 'null'
+        bookmaker_name:
+          type:
+          - string
+          - 'null'
+        selection_key:
+          type:
+          - string
+          - 'null'
+        odds:
+          type:
+          - number
+          - 'null'
+        fair_odds:
+          type:
+          - number
+          - 'null'
+        ev:
+          type:
+          - number
+          - 'null'
+    BetsSnapshotResponse:
+      type: object
+      required:
+      - resume
+      - items
+      properties:
+        resume:
+          type: string
+          description: JSON string mapping each requested strategy to its stream resume
+            ID.
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BetOpportunity'
+    BetsStreamDelta:
+      type: object
+      required:
+      - strategy
+      - op
+      - id
+      properties:
+        strategy:
+          type: string
+        op:
+          type: string
+          enum:
+          - upsert
+          - remove
+        id:
+          type: string
+        doc:
+          $ref: '#/components/schemas/BetOpportunity'
+    BetsStreamEvent:
+      type: object
+      required:
+      - resume
+      - events
+      properties:
+        resume:
+          type: string
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/BetsStreamDelta'
+    OddsHistoryStreamEvent:
+      type: object
+      required:
+      - event_id
+      - selection_key
+      - resume
+      - points
+      properties:
+        event_id:
+          type: string
+        selection_key:
+          type: string
+        resume:
+          type: string
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/OddsHistoryPoint'
+    RacingEventsStreamChange:
+      type: object
+      required:
+      - op
+      - event_id
+      properties:
+        op:
+          type: string
+          enum:
+          - upsert
+          - remove
+        event_id:
+          type: string
+        event:
+          type:
+          - object
+          - 'null'
+          additionalProperties: true
+    RacingEventsStreamEvent:
+      type: object
+      required:
+      - resume
+      - changes
+      properties:
+        resume:
+          type: string
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/RacingEventsStreamChange'
+    StreamHeartbeat:
+      type: object
+      description: Heartbeat payload. A heartbeat confirms the stream is still open
+        and carries no data.
+      additionalProperties: false
+    StreamResyncEvent:
+      type: object
+      description: Sent when a resume token is no longer available and the client
+        should reload the snapshot.
+      properties:
+        event_id:
+          type:
+          - string
+          - 'null'
+        selection_key:
+          type:
+          - string
+          - 'null'
+        resume:
+          type:
+          - string
+          - 'null'
+        reason:
+          type: string
+          example: trimmed
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
       in: header
       name: X-API-Key
-      description: Preferred server-side authentication method for Odds API clients.
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: App-user bearer token for supported app flows.
+      description: Send your API key in this header on every request.
 tags:
-- name: meta
-  description: API identity and reference metadata.
-- name: control
-  description: Current identity, usage, and limits.
-- name: metadata
-  description: Sports, leagues, bookmakers, registry, and public runtime metadata.
-- name: events
-  description: Sports event discovery and event-level metadata.
-- name: odds
-  description: Sports odds snapshots, streams, main lines, and line movement.
-- name: racing-events
-  description: Racing event discovery and racing event streams.
-- name: racing-odds
-  description: Racing odds snapshots and streams.
-- name: bets
-  description: Betting opportunity snapshots, streams, and helper calculations.
-- name: results
+- name: Start here
+  description: API identity, base URL, authentication, and reference links.
+- name: Account
+  description: Current API identity, usage counters, and contract limits.
+- name: Catalog
+  description: Supported sports, leagues, and bookmakers.
+- name: Sports events
+  description: Upcoming and live sports events plus event metadata.
+- name: Sports odds
+  description: Sports odds snapshots, line movement, Server-Sent Events, and WebSocket
+    updates.
+- name: Racing events
+  description: Racing event discovery and live racing event updates.
+- name: Racing odds
+  description: Racing odds snapshots, home racing feeds, Server-Sent Events, and WebSocket
+    updates.
+- name: Betting opportunities
+  description: Positive EV, arbitrage, middle, and bonus-bet opportunity feeds.
+- name: Results
   description: Sports event result lookup.
 servers:
 - url: https://api.odds-api.net/v1
   description: Production V1 base URL. Set ODDS_API_BASE_URL to override it in SDKs
     and examples.
-x-public-reference-families:
-- meta
-- control
-- metadata
-- events
-- odds
-- racing-events
-- racing-odds
-- bets
-- results
+security: *id007

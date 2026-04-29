@@ -10,7 +10,7 @@ const [events, positiveEv, arbitrage] = await Promise.all([
 ]);
 
 console.log("# Betting dashboard");
-console.log(`Events: ${events.count}`);
+console.log(`Found ${events.count} events`);
 console.log(`Positive EV opportunities: ${positiveEv.items.length}`);
 console.log(`Arbitrage opportunities: ${arbitrage.items.length}`);
 console.log(riskNote());

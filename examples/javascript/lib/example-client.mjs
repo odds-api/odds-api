@@ -10,7 +10,7 @@ export function createExampleClient() {
 }
 
 export function riskNote() {
-  return "Note: odds move and markets can suspend. Do not treat any edge as guaranteed profit.";
+  return "Note: odds move, markets can suspend, selections can void, limits apply, and execution can fail. Do not treat any edge as guaranteed profit.";
 }
 
 async function mockFetch(input) {
@@ -124,4 +124,3 @@ function json(value) {
     headers: { "content-type": "application/json" }
   });
 }
-

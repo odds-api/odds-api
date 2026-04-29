@@ -1,0 +1,35 @@
+- name: good first issue
+  color: 7057ff
+  description: Small, well-scoped contribution for new contributors.
+
+- name: documentation
+  color: 0075ca
+  description: README, docs, examples, or reference text.
+
+- name: examples
+  color: 0e8a16
+  description: Example apps, scripts, smoke tests, or expected output.
+
+- name: sdk
+  color: 5319e7
+  description: TypeScript or Python SDK behavior.
+
+- name: mcp
+  color: fbca04
+  description: MCP server, MCP docs, or agent-native tool behavior.
+
+- name: openapi
+  color: c2e0c6
+  description: OpenAPI schema, generated clients, or contract documentation.
+
+- name: python
+  color: 3572A5
+  description: Python SDK, examples, or docs.
+
+- name: typescript
+  color: 3178c6
+  description: TypeScript SDK, examples, or docs.
+
+- name: agent-friendly
+  color: f97316
+  description: Changes that make the repo easier for AI coding agents to use.

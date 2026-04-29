@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="360" viewBox="0 0 960 360" role="img" aria-labelledby="title desc">
+  <title id="title">Minimal REST terminal output</title>
+  <desc id="desc">Terminal output showing a curl request to the Odds API sports endpoint and a JSON response.</desc>
+  <rect width="960" height="360" rx="18" fill="#0B1220"/>
+  <rect x="24" y="24" width="912" height="312" rx="12" fill="#101827" stroke="#263449"/>
+  <circle cx="54" cy="54" r="7" fill="#EF4444"/>
+  <circle cx="78" cy="54" r="7" fill="#FACC15"/>
+  <circle cx="102" cy="54" r="7" fill="#22C55E"/>
+  <text x="40" y="98" fill="#94A3B8" font-family="Menlo, Consolas, monospace" font-size="18">$ export ODDS_API_KEY="your_api_key"</text>
+  <text x="40" y="132" fill="#94A3B8" font-family="Menlo, Consolas, monospace" font-size="18">$ curl -sS -H "X-API-Key: $ODDS_API_KEY" \</text>
+  <text x="64" y="166" fill="#94A3B8" font-family="Menlo, Consolas, monospace" font-size="18">"https://api.odds-api.net/v1/sports"</text>
+  <text x="40" y="212" fill="#E2E8F0" font-family="Menlo, Consolas, monospace" font-size="18">{</text>
+  <text x="64" y="246" fill="#E2E8F0" font-family="Menlo, Consolas, monospace" font-size="18">"items": ["rugby-league", "soccer", "basketball"]</text>
+  <text x="40" y="280" fill="#E2E8F0" font-family="Menlo, Consolas, monospace" font-size="18">}</text>
+  <text x="40" y="314" fill="#22C55E" font-family="Menlo, Consolas, monospace" font-size="16">Plain REST and JSON. No SDK required.</text>
+</svg>
