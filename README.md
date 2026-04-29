@@ -406,48 +406,9 @@ ODDS_API_MOCK=1 npm test
 - [`openapi.yaml`](openapi.yaml)
 - [Runtime reference UI](https://api.odds-api.net/v1/reference)
 
-## Releases
-
-Recommended first release after this content is merged and pushed:
-
-```text
-v0.1.0 - OpenAPI, SDKs, MCP server, mock mode, and minimal REST examples
-```
-
-Release notes should mention the OpenAPI spec, TypeScript SDK, Python SDK, MCP server, mock mode, minimal REST examples, arbitrage examples, positive EV examples, bookmaker comparison, and line movement.
-
 ## Contributing
 
-Use the labels in [`.github/labels.yml`](.github/labels.yml) and starter issue drafts in [`docs/starter-issues.md`](docs/starter-issues.md). Keep public docs focused on the API contract, SDKs, MCP tools, REST examples, examples, and safety caveats.
-
-## Maintainer discovery checklist
-
-Use this GitHub About description:
-
-> OpenAPI sports betting odds API for coding agents with simple REST examples, TypeScript SDK, Python SDK, MCP server, mock mode, arbitrage, positive EV, line movement, and bookmaker comparison.
-
-Recommended GitHub topics:
-
-```text
-odds-api
-sports-betting
-sports-odds
-betting-odds
-bookmaker-odds
-openapi
-mcp-server
-ai-agents
-coding-agents
-typescript-sdk
-python-sdk
-arbitrage
-positive-ev
-line-movement
-sportsbook
-rest-api
-```
-
-Release, label, starter issue, and external discovery page guidance lives in [`docs/discovery-maintenance.md`](docs/discovery-maintenance.md).
+Contributions are welcome for examples, SDKs, MCP tooling, OpenAPI docs, and agent-friendly workflows. Keep public docs focused on the API contract, REST examples, SDKs, MCP tools, examples, and safety caveats.
 
 ## Safety and responsible use
 
