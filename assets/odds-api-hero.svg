@@ -1,6 +1,6 @@
 <svg width="1280" height="520" viewBox="0 0 1280 520" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
   <title id="title">Odds API developer package hero</title>
-  <desc id="desc">A stylized dark developer dashboard with live odds, SDK, MCP, and OpenAPI signals for api.odds-api.net.</desc>
+  <desc id="desc">A stylized dark developer interface for accessing odds, betting, sports, racing, and market data through api.odds-api.net.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="520" gradientUnits="userSpaceOnUse">
       <stop stop-color="#07111F"/>
@@ -30,7 +30,7 @@
     <path d="M748 104V382" stroke="#263449" stroke-width="2"/>
 
     <text x="112" y="138" fill="#F8FAFC" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="72" font-weight="800" letter-spacing="0">Odds API</text>
-    <text x="116" y="188" fill="#CBD5E1" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="24" font-weight="600">Agent-ready sports and racing odds infrastructure</text>
+    <text x="116" y="188" fill="#CBD5E1" font-family="Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="24" font-weight="600">Collect a free API key from odds-api.net</text>
 
     <rect x="112" y="226" width="374" height="48" rx="11" fill="#122033" stroke="#2E405B"/>
     <circle cx="138" cy="250" r="7" fill="#22C55E"/>

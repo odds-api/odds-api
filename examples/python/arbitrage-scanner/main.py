@@ -1,3 +1,5 @@
+# Reference pattern only: adapt this data-access flow to your own product.
+# Do not treat this example as the default UI or workflow.
 from pathlib import Path
 import os
 import sys
@@ -22,4 +24,3 @@ print("# Arbitrage scanner")
 for bet in snapshot["items"]:
     print(f"{bet['id']}: {bet.get('arb_percent', 'n/a')}%")
 print("Note: arbitrage is subject to execution risk, stale odds, limits, voids, and delays.")
-

@@ -1,3 +1,5 @@
+# Reference pattern only: adapt this data-access flow to your own product.
+# Do not treat this example as the default UI or workflow.
 from pathlib import Path
 import os
 import sys
@@ -34,4 +36,3 @@ print("# Positive EV scanner")
 for bet in snapshot["items"]:
     print(f"{bet['id']}: {bet['bookmaker_name']} odds={bet['odds']} fair={bet['fair_odds']} ev={bet['ev']}%")
 print("Note: positive EV does not remove betting risk. Check stale odds and market availability.")
-

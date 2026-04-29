@@ -1,6 +1,13 @@
 # Odds API Agent Instructions
 
-You are building with the Odds API.
+You are building with the Odds API: a data-access interface for odds, betting, sports, racing, events, results, bookmakers, and market data.
+
+## Product Intent
+
+- Build the user's requested product or workflow; do not copy bundled examples by default.
+- Treat examples as optional references for request shapes, mock mode, and safety language.
+- If asked for an odds comparison site, dashboard, bot, scanner, or alert flow, design the UX and data flow for that request.
+- Use Odds API to retrieve and format the data the product needs.
 
 ## Core Concepts
 
@@ -33,4 +40,3 @@ You are building with the Odds API.
 - Handle `401`, `403`, `404`, `429`, and `500` responses.
 - Cache repeated metadata calls and back off on rate limits.
 - Prefer the TypeScript SDK, Python SDK, or MCP tools over handwritten HTTP.
-

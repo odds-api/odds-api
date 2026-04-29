@@ -13,7 +13,7 @@ export function createServer(client = new OddsApiClient()) {
 
   server.tool(
     "odds_api.search_events",
-    "Search Odds API sports events.",
+    "Retrieve sports event data from Odds API for custom apps and workflows.",
     {
       sport: z.string().optional(),
       league: z.string().optional(),
@@ -26,7 +26,7 @@ export function createServer(client = new OddsApiClient()) {
 
   server.tool(
     "odds_api.get_odds",
-    "Get an event odds snapshot.",
+    "Retrieve a normalized odds snapshot for an event.",
     {
       event_id: z.string(),
       bookmakers: z.string().optional(),
@@ -38,7 +38,7 @@ export function createServer(client = new OddsApiClient()) {
 
   server.tool(
     "odds_api.compare_odds",
-    "Compare odds across bookmakers for an event.",
+    "Retrieve bookmaker comparison data for an event.",
     {
       event_id: z.string(),
       bookmakers: z.array(z.string()).min(1)
@@ -48,21 +48,21 @@ export function createServer(client = new OddsApiClient()) {
 
   server.tool(
     "odds_api.find_arbitrage",
-    "Find arbitrage opportunities from the bets snapshot.",
+    "Retrieve arbitrage opportunity data from the bets snapshot.",
     { limit: z.number().optional() },
     async (args) => jsonResult(await client.findArbitrage(args))
   );
 
   server.tool(
     "odds_api.find_positive_ev",
-    "Find positive EV opportunities from the bets snapshot.",
+    "Retrieve positive EV opportunity data from the bets snapshot.",
     { limit: z.number().optional() },
     async (args) => jsonResult(await client.findPositiveEv(args))
   );
 
   server.tool(
     "odds_api.get_line_movement",
-    "Get odds history for a selection.",
+    "Retrieve odds history and line-movement data for a selection.",
     {
       event_id: z.string(),
       selection_key: z.string(),
@@ -75,14 +75,14 @@ export function createServer(client = new OddsApiClient()) {
 
   server.tool(
     "odds_api.get_bookmakers",
-    "List available bookmakers.",
+    "Retrieve available bookmaker metadata.",
     {},
     async () => jsonResult(await client.listBookmakers())
   );
 
   server.tool(
     "odds_api.get_sports",
-    "List available sports.",
+    "Retrieve available sports metadata.",
     {},
     async () => jsonResult(await client.listSports())
   );

@@ -1,3 +1,5 @@
+// Reference pattern only: adapt this data-access flow to your own product.
+// Do not treat this example as the default UI or workflow.
 import { createExampleClient, riskNote } from "../lib/example-client.mjs";
 
 const client = createExampleClient();
@@ -11,4 +13,3 @@ for (const series of history.series || []) {
   }
 }
 console.log(riskNote());
-

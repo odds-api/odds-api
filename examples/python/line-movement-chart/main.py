@@ -1,3 +1,5 @@
+# Reference pattern only: adapt this data-access flow to your own product.
+# Do not treat this example as the default UI or workflow.
 from pathlib import Path
 import os
 import sys
@@ -37,4 +39,3 @@ for series in history["series"]:
     for point in series["points"]:
         print(f"  {point['tick_ts']}: {point['odds']}")
 print("Note: line movement charts can lag live markets. Verify before user-facing alerts.")
-

@@ -1,3 +1,5 @@
+// Reference pattern only: adapt this data-access flow to your own product.
+// Do not treat this example as the default UI or workflow.
 import { createExampleClient, riskNote } from "../lib/example-client.mjs";
 
 const client = createExampleClient();
@@ -15,4 +17,3 @@ if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID && process.en
 } else {
   console.log(text);
 }
-
