@@ -11,18 +11,46 @@ from odds_api import OddsApiClient  # noqa: E402
 
 def mock_transport(method, url, headers, body):
     return {
+        "resume": '{"pos_ev":"1760000000000-0"}',
         "items": [
             {
                 "id": "positive-ev-example",
+                "betID": "positive-ev-example",
                 "strategy": "pos_ev",
+                "event_id": "event-1001",
+                "gameID": "event-1001",
+                "sport": "rugby-league",
+                "league": "NRL",
+                "home_team": "Brisbane Broncos",
+                "away_team": "Sydney Roosters",
+                "start_time": 1760007200,
+                "latest_timestamp": 1760000000,
+                "expiry_timestamp": 1760000900,
                 "selection_key": "moneyline:home",
+                "selection_keys": ["moneyline:home"],
+                "selection_key_by_leg": {"selection_1": "moneyline:home", "selection_2": None, "selection_3": None, "bonus": None},
                 "bookmaker_name": "pinnacle",
                 "odds": 2.11,
                 "fair_odds": 1.98,
                 "ev": 6.6,
+                "market_type": "moneyline",
+                "bet_type": "moneyline",
+                "period": "full time",
+                "line": "home",
+                "line_repr": "Brisbane Broncos",
+                "history_ready": True,
+                "odds_history": {
+                    "event_id": "event-1001",
+                    "market_group_id": "moneyline::0",
+                    "primary_selection_key": "moneyline:home",
+                    "selection_keys": ["moneyline:home"],
+                    "bookmakers": ["pinnacle"],
+                    "default_price_type": "odds_no_vig",
+                    "supports_history": True,
+                    "missing_fields": [],
+                },
             }
         ],
-        "resume": {"pos_ev": "0-0"},
     }
 
 

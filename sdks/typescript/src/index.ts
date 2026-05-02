@@ -1,3 +1,15 @@
+import { oddsApiMockFetch } from "./mock.js";
+
+export {
+  MOCK_EVENT_ID,
+  MOCK_NEXT_RESUME,
+  MOCK_RACING_EVENT_ID,
+  MOCK_RESUME,
+  oddsApiMockFetch,
+  oddsApiMockSseMessages,
+  type OddsApiMockSseMessage
+} from "./mock.js";
+
 export type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>;
 
 export interface OddsApiClientOptions {
@@ -25,7 +37,10 @@ export interface OddLine {
   market_group_id?: string | null;
   market_key: string;
   type: string;
+  bet_type?: string | null;
   period: number;
+  period_str?: string | null;
+  metric?: string | null;
   line?: string | null;
   side?: string | null;
   player_name?: string | null;
@@ -58,7 +73,7 @@ export interface BetOpportunity {
 
 export interface BetsSnapshot {
   items: BetOpportunity[];
-  resume?: string | Record<string, string>;
+  resume?: string;
   [key: string]: unknown;
 }
 
@@ -98,7 +113,7 @@ export class OddsApiClient {
     this.baseUrl = (options.baseUrl || process.env.ODDS_API_BASE_URL || "https://api.odds-api.net/v1").replace(/\/+$/, "");
     this.apiKey = options.apiKey || process.env.ODDS_API_KEY;
     this.bearerToken = options.bearerToken;
-    this.fetchImpl = options.fetchImpl || fetch;
+    this.fetchImpl = options.fetchImpl || (process.env.ODDS_API_MOCK === "1" ? oddsApiMockFetch : fetch);
   }
 
   async get<T>(path: string, params?: QueryParams): Promise<T> {
@@ -226,7 +241,10 @@ export class OddsApiClient {
       selection_key: "Stable selection identifier used for odds history.",
       market_key: "Normalized market key.",
       type: "Normalized market type.",
+      bet_type: "Normalized betting family when available.",
       period: "Normalized period integer.",
+      period_str: "Human-readable period label when available.",
+      metric: "Normalized metric for props and derived markets when available.",
       odds: "Bookmaker decimal odds.",
       odds_no_vig: "No-vig reference price when available.",
       is_available: "False when a line is unavailable or suspended."
@@ -257,4 +275,3 @@ function safeJson(text: string): unknown {
 }
 
 export default OddsApiClient;
-

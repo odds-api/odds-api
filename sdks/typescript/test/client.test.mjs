@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { OddsApiClient } from "../dist/index.js";
+import { OddsApiClient, oddsApiMockFetch } from "../dist/index.js";
 
 test("client sends API key and builds event search URL", async () => {
   const seen = {};
@@ -44,3 +44,44 @@ test("findBestOdds returns the best available price per selection", async () => 
   assert.equal(best[0].odds, 2.1);
 });
 
+test("mock transport mirrors public response shapes", async (t) => {
+  const originalMock = process.env.ODDS_API_MOCK;
+  process.env.ODDS_API_MOCK = "1";
+  t.after(() => {
+    if (originalMock === undefined) delete process.env.ODDS_API_MOCK;
+    else process.env.ODDS_API_MOCK = originalMock;
+  });
+
+  const client = new OddsApiClient({ baseUrl: "https://api.odds-api.net/v1" });
+  const snapshot = await client.getOddsSnapshot("event-1001");
+  assert.equal(snapshot.resume, "1760000000000-0");
+  assert.equal(snapshot.next_cursor, null);
+  assert.equal(snapshot.items[0].bet_type, "moneyline");
+  assert.equal(snapshot.items[0].period_str, "full time");
+  assert.equal(Object.hasOwn(snapshot.items[0], "metric"), true);
+
+  const bets = await client.findPositiveEv({ limit: 1 });
+  assert.equal(typeof bets.resume, "string");
+  assert.deepEqual(JSON.parse(bets.resume), { pos_ev: "1760000000000-0" });
+  assert.equal(bets.items[0].history_ready, true);
+  assert.equal(bets.items[0].odds_history.primary_selection_key, "moneyline:home");
+
+  const history = await client.getLineMovement("event-1001", "moneyline:home");
+  assert.equal(history.meta.from_ts, "2026-04-27T00:00:00Z");
+  assert.equal(history.meta.to_ts, "2026-04-27T01:00:00Z");
+
+  const bookmakers = await client.listBookmakers();
+  assert.equal(bookmakers.items[0].bookmaker, "bet365");
+  assert.deepEqual(bookmakers.items[0].country_codes, ["AU", "UK"]);
+});
+
+test("mock fetch can be injected directly", async () => {
+  const client = new OddsApiClient({
+    baseUrl: "https://api.odds-api.net/v1",
+    fetchImpl: oddsApiMockFetch
+  });
+  const racingOdds = await client.getRacingOdds("race-1001");
+  assert.equal(racingOdds.resume, "1760000000000-0");
+  assert.equal(racingOdds.items[0].bookmaker_name, "bet365");
+  assert.equal(racingOdds.items[0].payload.markets[0].market_key, "win");
+});

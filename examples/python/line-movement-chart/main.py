@@ -18,11 +18,16 @@ def mock_transport(method, url, headers, body):
             {
                 "bookmaker_name": "bet365",
                 "points": [
-                    {"tick_ts": "2026-04-27T00:00:00Z", "odds": 1.95, "is_available": True},
-                    {"tick_ts": "2026-04-27T01:00:00Z", "odds": 2.05, "is_available": True},
+                    {"tick_ts": "2026-04-27T00:00:00Z", "is_available": True, "value": None, "odds": 1.95, "odds_no_vig": 1.91, "fair_odds": None},
+                    {"tick_ts": "2026-04-27T01:00:00Z", "is_available": True, "value": None, "odds": 2.05, "odds_no_vig": 2.01, "fair_odds": None},
                 ],
             }
         ],
+        "meta": {
+            "from_ts": "2026-04-27T00:00:00Z",
+            "to_ts": "2026-04-27T01:00:00Z",
+            "available_price_types": ["odds", "odds_no_vig", "fair_odds"],
+        },
     }
 
 

@@ -85,7 +85,9 @@ test("parses SSE data and heartbeat frames", () => {
 test("samples odds streams with hard event limits and auth headers", async (t) => {
   const originalFetch = globalThis.fetch;
   const originalApiKey = process.env.ODDS_API_KEY;
+  const originalMock = process.env.ODDS_API_MOCK;
   process.env.ODDS_API_KEY = "test_key";
+  delete process.env.ODDS_API_MOCK;
   let seenUrl;
   let seenHeaders;
   globalThis.fetch = async (url, init) => {
@@ -106,6 +108,8 @@ test("samples odds streams with hard event limits and auth headers", async (t) =
     globalThis.fetch = originalFetch;
     if (originalApiKey === undefined) delete process.env.ODDS_API_KEY;
     else process.env.ODDS_API_KEY = originalApiKey;
+    if (originalMock === undefined) delete process.env.ODDS_API_MOCK;
+    else process.env.ODDS_API_MOCK = originalMock;
   });
 
   const server = createServer({ baseUrl: "https://api.odds-api.net/v1" });
@@ -130,6 +134,8 @@ test("samples odds streams with hard event limits and auth headers", async (t) =
 
 test("samples bets streams with strategy filters", async (t) => {
   const originalFetch = globalThis.fetch;
+  const originalMock = process.env.ODDS_API_MOCK;
+  delete process.env.ODDS_API_MOCK;
   let seenUrl;
   globalThis.fetch = async (url) => {
     seenUrl = String(url);
@@ -145,6 +151,8 @@ test("samples bets streams with strategy filters", async (t) => {
   };
   t.after(() => {
     globalThis.fetch = originalFetch;
+    if (originalMock === undefined) delete process.env.ODDS_API_MOCK;
+    else process.env.ODDS_API_MOCK = originalMock;
   });
 
   const server = createServer({ baseUrl: "https://api.odds-api.net/v1" });
@@ -158,6 +166,59 @@ test("samples bets streams with strategy filters", async (t) => {
   assert.equal(url.searchParams.get("strategies"), "pos_ev");
   assert.equal(sample.count, 1);
   assert.equal(sample.events[0].data.strategy, "pos_ev");
+});
+
+test("samples mock odds streams with live-shaped delta payloads", async (t) => {
+  const originalMock = process.env.ODDS_API_MOCK;
+  const originalFetch = globalThis.fetch;
+  process.env.ODDS_API_MOCK = "1";
+  globalThis.fetch = async () => {
+    throw new Error("mock stream sampling should not call fetch");
+  };
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalMock === undefined) delete process.env.ODDS_API_MOCK;
+    else process.env.ODDS_API_MOCK = originalMock;
+  });
+
+  const server = createServer({ baseUrl: "https://api.odds-api.net/v1" });
+  const sample = await callTool(server, "odds_api.sample_odds_stream", {
+    event_id: "event-1001",
+    max_events: 2
+  });
+
+  assert.equal(sample.count, 2);
+  assert.equal(sample.events[0].event, "delta");
+  assert.equal(sample.events[0].data.event_id, "event-1001");
+  assert.equal(sample.events[0].data.changes[0].op, "upsert");
+  assert.equal(sample.events[0].data.changes[0].odd.bet_type, "moneyline");
+  assert.equal(sample.events[0].data.changes[0].odd.period_str, "full time");
+  assert.equal(sample.events[1].event, "heartbeat");
+});
+
+test("samples mock bets streams with JSON resume strings and delete ops", async (t) => {
+  const originalMock = process.env.ODDS_API_MOCK;
+  const originalFetch = globalThis.fetch;
+  process.env.ODDS_API_MOCK = "1";
+  globalThis.fetch = async () => {
+    throw new Error("mock stream sampling should not call fetch");
+  };
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalMock === undefined) delete process.env.ODDS_API_MOCK;
+    else process.env.ODDS_API_MOCK = originalMock;
+  });
+
+  const server = createServer({ baseUrl: "https://api.odds-api.net/v1" });
+  const sample = await callTool(server, "odds_api.sample_bets_stream", {
+    strategies: "pos_ev",
+    max_events: 1
+  });
+
+  assert.equal(sample.count, 1);
+  assert.deepEqual(JSON.parse(sample.events[0].data.resume), { pos_ev: "1760000000001-0" });
+  assert.equal(sample.events[0].data.events[0].doc.odds_history.primary_selection_key, "moneyline:home");
+  assert.equal(sample.events[0].data.events[1].op, "delete");
 });
 
 async function callTool(server, name, args) {

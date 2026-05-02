@@ -31,6 +31,8 @@
   ·
   <a href="#start-simple-scale-up">Start simple</a>
   ·
+  <a href="https://odds-api.net/coverage">Coverage</a>
+  ·
   <a href="#for-ai-coding-agents">AI agents</a>
   ·
   <a href="#mock-mode">Mock mode</a>
@@ -38,6 +40,8 @@
   <a href="#examples">Examples</a>
   ·
   <a href="#safety-and-responsible-use">Safety</a>
+  ·
+  <a href="SECURITY.md">Security</a>
 </p>
 
 ---
@@ -146,6 +150,7 @@ examples/minimal-rest/javascript
 | I want typed app integration | TypeScript or Python SDK |
 | I want coding-agent access | MCP server |
 | I want generated clients | `openapi.yaml` |
+| I want coverage discovery | `https://odds-api.net/coverage` and `GET /coverage` |
 | I want local demos without credentials | `ODDS_API_MOCK=1` |
 | I want arbitrage examples | Arbitrage scanner example |
 | I want positive EV examples | Positive EV scanner example |
@@ -411,6 +416,7 @@ ODDS_API_MOCK=1 npm test
 - [`docs/mcp.md`](docs/mcp.md)
 - [`docs/pypi-publishing.md`](docs/pypi-publishing.md)
 - [`docs/discovery-pages`](docs/discovery-pages)
+- [`SECURITY.md`](SECURITY.md)
 - [`openapi.yaml`](openapi.yaml)
 - [Runtime reference UI](https://api.odds-api.net/v1/reference)
 

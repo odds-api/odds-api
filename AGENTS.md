@@ -36,17 +36,19 @@ Use this repo when a user asks for:
 - Local mock mode for SDK and advanced examples: `ODDS_API_MOCK=1`
 - Optional base URL override: `ODDS_API_BASE_URL`
 
-## Git and account safety
+## Repository and release safety
 
-This checkout is only for the public repo `odds-api/odds-api`.
+This repository is the public developer package for `odds-api/odds-api`.
 
 Before any commit, tag, release, or push, verify all of the following:
 
-- current directory is `/Users/rorincampbell/Desktop/odds-api-public`
-- `git remote -v` points to `git@github-odds-api:odds-api/odds-api.git`
-- `gh auth status` shows the active GitHub account as `odds-api`
+- `git rev-parse --show-toplevel` points to the intended public repo checkout
+- `git remote -v` points to `github.com/odds-api/odds-api`
+- `gh auth status` shows an account that is allowed to publish to `odds-api/odds-api`
+- the diff contains only public SDK, OpenAPI, MCP, example, documentation, or packaging changes
+- no secrets, API keys, `.env` files, local machine paths, private repository names, or private implementation details are included
 
-Do not push the private WagerWise repo, or anything under `/Users/rorincampbell/Desktop/wagerwise`, to `github.com/odds-api/odds-api`. The private WagerWise repo uses the separate `github-rorin:wagerwiseadmin/wagerwise.git` remote.
+Do not add runtime service internals, scraping/parser implementation details, admin routes, raw-source-feed details, private datasets, proprietary scoring internals, or maintainer-only local setup notes to this public package.
 
 ## PyPI publishing safety
 
@@ -54,13 +56,13 @@ The public Python SDK package is `odds-api-client`, imported as `odds_api`.
 
 Before publishing to PyPI, verify all of the following:
 
-- current directory is `/Users/rorincampbell/Desktop/odds-api-public`
+- the working tree is the intended `odds-api/odds-api` checkout
 - package metadata is under `sdks/python/pyproject.toml`
 - package version matches `sdks/python/src/odds_api/__init__.py`
 - GitHub Actions workflow is `.github/workflows/python-publish.yml`
 - PyPI Trusted Publisher is configured for owner `odds-api`, repository `odds-api`, workflow `python-publish.yml`, and environment `pypi`
 
-Do not upload Python packages from the private WagerWise repo. Do not use long-lived PyPI tokens unless Trusted Publishing is unavailable. See `docs/pypi-publishing.md`.
+Publish through GitHub Actions Trusted Publishing. Do not use long-lived PyPI tokens unless Trusted Publishing is unavailable. See `docs/pypi-publishing.md`.
 
 ## Common tasks
 

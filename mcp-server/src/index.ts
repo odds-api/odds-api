@@ -3,7 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-import { OddsApiClient, type QueryParams } from "@odds-api/client";
+import { OddsApiClient, oddsApiMockSseMessages, type QueryParams } from "@odds-api/client";
 
 const DEFAULT_STREAM_MAX_EVENTS = 10;
 const DEFAULT_STREAM_TIMEOUT_SEC = 15;
@@ -272,8 +272,21 @@ async function sampleSseStream(
   const maxEvents = boundedInteger(options.max_events, DEFAULT_STREAM_MAX_EVENTS, HARD_STREAM_MAX_EVENTS);
   const timeoutSec = boundedInteger(options.timeout_sec, DEFAULT_STREAM_TIMEOUT_SEC, HARD_STREAM_TIMEOUT_SEC);
   const endpoint = buildStreamUrl(client.baseUrl, path, params);
-  const controller = new AbortController();
   const startedAt = Date.now();
+
+  if (process.env.ODDS_API_MOCK === "1") {
+    const events = oddsApiMockSseMessages(endpoint).slice(0, maxEvents);
+    return {
+      endpoint,
+      elapsed_ms: Date.now() - startedAt,
+      stopped_reason: events.length >= maxEvents ? "max_events" : "stream_closed",
+      count: events.length,
+      events,
+      warning: STREAM_SAMPLE_WARNING
+    };
+  }
+
+  const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutSec * 1000);
   const events: SseMessage[] = [];
   let stoppedReason: StreamSampleResult["stopped_reason"] = "stream_closed";

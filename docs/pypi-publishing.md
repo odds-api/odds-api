@@ -66,8 +66,7 @@ python3 -c "from odds_api import OddsApiClient, __version__; print(__version__, 
 
 ## Safety rules
 
-- Publish only from `/Users/rorincampbell/Desktop/odds-api-public`.
+- Publish only from the intended `odds-api/odds-api` checkout.
 - Publish only to the `odds-api-client` PyPI project.
-- Never publish from the private WagerWise repo.
-- Never include WagerWise/private implementation details, secrets, parser internals, raw datasets, admin endpoints, or proprietary scoring internals.
+- Never include private implementation details, secrets, parser internals, raw datasets, admin endpoints, proprietary scoring internals, local machine paths, or maintainer-only setup notes.
 - PyPI versions are immutable. If a version has been uploaded, bump to a new version.

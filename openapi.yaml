@@ -26,6 +26,42 @@ info:
     reconnecting.
 
 
+    Production clients should start with catalog discovery, page event lists with
+    `limit` and `cursor`, fetch odds
+
+    snapshots for initial state, then use streams for hot events. Recommended starting
+    polling intervals are:
+
+    catalog metadata every 6-24 hours, sports event lists every 5-15 minutes, racing
+    event lists every 1-5 minutes,
+
+    odds snapshots every 60-120 seconds when streams are not used, betting opportunity
+    snapshots every 30-120 seconds,
+
+    and results every 1-5 minutes after the event starts until settled.
+
+
+    Handle HTTP 429 by honoring `Retry-After` when present, otherwise use jittered
+    exponential backoff. Use
+
+    `/usage` to detect monthly API-credit quota exhaustion and `/limits` to discover
+    response, stream, add-on, and
+
+    plan caps. Most standard API calls use 1 credit; large odds snapshots, history,
+    broad aggregate feeds, and
+
+    support-approved betting feeds may use multiple credits as weighted metering rolls
+    out. Cache snapshots by request
+
+    shape, respect `ttl_seconds` when present, display `as_of_ts_ms`, and keep the
+    most recent `resume` token with
+
+    cached state. On stream disconnect, reconnect with `since=<last_resume>` and `catchup=true`;
+    on `resync`, reload
+
+    the snapshot before applying more deltas.
+
+
     Odds can change quickly. Check `as_of_ts_ms`, handle empty arrays, suspended selections,
     rate limits, and stale
 
@@ -57,6 +93,50 @@ info:
   x-responsible-gambling: Do not present betting outcomes as risk-free. Always mention
     execution risk, stale prices, bookmaker limits, voids, delays, and jurisdictional
     availability in user-facing products.
+  x-production-integration:
+    recommended_flow:
+    - Authenticate backend requests with X-API-Key.
+    - Discover sports, leagues, and bookmakers before storing local filters.
+    - Page sports or racing events with limit and cursor.
+    - Fetch odds snapshots for initial state and persist as_of_ts_ms, ttl_seconds,
+      next_cursor, and resume.
+    - Use SSE or WebSocket streams for realtime updates and reconnect with since=<last_resume>.
+    - Use history endpoints for line movement and results endpoints after events finish.
+    recommended_polling_intervals:
+      catalog_metadata: 6-24h
+      sports_events: 5-15m, or 1-5m for active leagues and near-start windows
+      racing_events: 1-5m with narrow time windows
+      odds_snapshots_without_streams: 60-120s, or 15-30s for priority events with
+        strict quota controls
+      betting_opportunity_snapshots: 30-120s depending on alert urgency
+      results_after_start: 1-5m until settled, then back off
+    stream_reconnects:
+    - Snapshot first, then connect to /stream or /ws with matching filters.
+    - Apply delta messages idempotently and persist the newest resume token.
+    - Use heartbeat messages as liveness checks.
+    - Reconnect with jittered exponential backoff and since=<last_resume>.
+    - Reload the snapshot when a resync message indicates the resume token is unavailable.
+    rate_limit_backoff:
+    - Honor Retry-After on 429 when present.
+    - Otherwise start around 2 seconds and double up to about 60 seconds with jitter.
+    - Use X-RateLimit-* response headers when present to tune callers.
+    - Use /usage to detect monthly API-credit quota exhaustion and stop retry loops.
+    cache_strategy:
+    - Cache by endpoint path, event ID, normalized filters, page cursor, and product
+      context.
+    - Respect ttl_seconds when present and always surface as_of_ts_ms.
+    - Use streams to update hot caches and reload snapshots after resync or parse
+      failure.
+    - Prefer stale-while-revalidate displays with a visible timestamp.
+    failure_modes:
+    - 400 invalid request shape, cursor, timestamp, or filter.
+    - 401 missing or invalid API key.
+    - 403 key lacks plan, product, bookmaker, stream, racing, or strategy access.
+    - 404 event, race, result, or selection is unavailable.
+    - 429 rate limit or monthly quota exhaustion.
+    - 5xx transient service failure; retry with backoff and keep last good cached
+      data marked stale.
+    - Stream close or resync; reconnect with since or reload the snapshot.
 paths:
   /:
     get:
@@ -97,6 +177,27 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '429': &id005
           description: Rate limit exceeded.
+          headers:
+            Retry-After:
+              description: Seconds to wait before retrying when supplied by the limiter.
+              schema:
+                type: integer
+                minimum: 1
+            X-RateLimit-Limit:
+              description: Request bucket capacity for the active limiter bucket when
+                supplied.
+              schema:
+                type: integer
+            X-RateLimit-Remaining:
+              description: Approximate remaining requests in the active limiter bucket
+                when supplied.
+              schema:
+                type: integer
+                minimum: 0
+            X-RateLimit-Bucket:
+              description: Limiter bucket name that produced the response when supplied.
+              schema:
+                type: string
           content:
             application/json:
               schema:
@@ -109,6 +210,55 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       description: Returns the API name, version, OpenAPI document URL, and hosted
         reference URL.
+      security: []
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /status:
+    get:
+      tags:
+      - Status
+      summary: 'API status: Public health summary'
+      operationId: public_status_status_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicStatusResponse'
+              examples:
+                default:
+                  summary: 'API status: Public health summary'
+                  value:
+                    status: operational
+                    as_of: '2026-04-29T10:25:00Z'
+                    window_seconds: 300
+                    components:
+                    - id: rest_api
+                      name: REST API
+                      status: operational
+                      metrics:
+                        uptime_pct: 100.0
+                        p50_ms: 24.0
+                        p95_ms: 410.0
+                        p99_ms: 846.0
+                        error_rate_pct: 0.02
+                    rate_limits:
+                      status: operational
+                      throttled_pct: 0.4
+                    source:
+                      fresh: true
+                      age_seconds: 18
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Returns a sanitized public status summary for buyer-facing pages.
+        The response includes recent component availability, latency percentiles,
+        5xx error rate, stream health, and rate-limit health without exposing internal
+        service names, infrastructure metrics, bookmaker details, raw traffic volume,
+        or incident history.
       security: []
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /me:
@@ -151,13 +301,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UsageResponse'
+              examples:
+                default:
+                  summary: 'Account: Usage'
+                  value:
+                    period_start_utc: '2026-05-01T00:00:00Z'
+                    period_end_utc: '2026-06-01T00:00:00Z'
+                    plan: live
+                    pricing_model: odds_api_net_v2
+                    api_credits_used: 18420
+                    api_credits_limit: 20000000
+                    exceeded: false
         '400': *id001
         '401': *id002
         '403': *id003
         '404': *id004
         '429': *id005
         '500': *id006
-      description: Returns quota and usage counters for the supplied API key.
+      description: Returns quota and usage counters for the supplied API key. New
+        odds-api.net pricing uses API credits rather than raw request counts. Production
+        clients should check this endpoint when 429 responses persist so quota exhaustion
+        does not become an infinite retry loop.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /limits:
     get:
@@ -174,14 +338,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LimitsResponse'
+              examples:
+                default:
+                  summary: 'Account: Limits'
+                  value:
+                    responses:
+                      events_limit_max: 1000
+                      odds_snapshot_limit_max: 10000
+                      bets_snapshot_limit_max: 20000
+                    sse:
+                      heartbeat_sec_min: 5
+                      heartbeat_sec_max: 120
+                      max_batch_default: 500
         '400': *id001
         '401': *id002
         '403': *id003
         '404': *id004
         '429': *id005
         '500': *id006
-      description: Returns contract-level request and stream limits that clients should
-        respect.
+      description: Returns contract-level API-credit, request, stream, add-on, and
+        response limits that clients should respect. Use this to cap page sizes, snapshot
+        sizes, stream heartbeat settings, and stream batch sizes before starting high-volume
+        jobs.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /sports:
     get:
@@ -222,6 +400,7 @@ paths:
           - type: string
           - type: 'null'
           title: Sport
+        description: Sport filter. Use `/sports` to discover supported values.
       responses:
         '200':
           description: Successful Response
@@ -255,15 +434,14 @@ paths:
           description: Optional comma-separated country code filter, for example `AU`
             or `AU,UK`.
           title: Country Code
-        description: Optional comma-separated country code filter, for example `AU`
-          or `AU,UK`.
+        description: Comma-separated country code filter, for example `AU` or `AU,UK`.
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BookmakersResponse'
+                $ref: '#/components/schemas/BookmakerCatalogResponse'
               examples:
                 default:
                   summary: 'Catalog: Bookmakers'
@@ -301,7 +479,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BookmakerCountriesResponse'
+                $ref: '#/components/schemas/BookmakerCountriesCatalogResponse'
               examples:
                 default:
                   summary: 'Catalog: Bookmaker countries'
@@ -325,6 +503,123 @@ paths:
       description: Lists country codes represented in the active bookmaker catalog
         and the bookmakers available in each country.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
+  /coverage:
+    get:
+      tags:
+      - Catalog
+      summary: 'Catalog: Coverage'
+      operationId: coverage_coverage_get
+      security: []
+      parameters:
+      - name: bookmaker
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Canonical bookmaker filter, for example `bet365`.
+          title: Bookmaker
+        description: Canonical bookmaker filter. Use `/bookmakers` or `/coverage`
+          to discover supported keys.
+      - name: sport
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Sport filter, for example `basketball`.
+          title: Sport
+        description: Sport filter. Use `/sports` to discover supported values.
+      - name: league
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: League filter, for example `NBA`.
+          title: League
+        description: League filter. Use `/leagues?sport=...` to discover supported
+          values.
+      - name: country_code
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Optional comma-separated country code filter.
+          title: Country Code
+        description: Comma-separated country code filter, for example `AU` or `AU,UK`.
+      - name: lookback_days
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 90
+          minimum: 1
+          default: 30
+          title: Lookback Days
+        description: Number of days of recently observed approximate market coverage
+          to include. Maximum is 90.
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoverageResponse'
+              examples:
+                default:
+                  summary: 'Catalog: Coverage'
+                  value:
+                    as_of: '2026-04-29T10:25:00Z'
+                    bookmakers:
+                    - bookmaker: bet365
+                      country_codes:
+                      - AU
+                      - UK
+                    - bookmaker: sportsbet
+                      country_codes:
+                      - AU
+                    sports:
+                    - basketball
+                    - rugby league
+                    leagues:
+                    - sport: basketball
+                      league: NBA
+                    - sport: rugby league
+                      league: NRL
+                    markets:
+                    - bookmaker: bet365
+                      sport: basketball
+                      league: NBA
+                      bet_type: moneyline
+                      last_seen_at: '2026-04-29T10:20:00Z'
+                      sample_event_id: '3704597661'
+                    - bookmaker: sportsbet
+                      sport: rugby league
+                      league: NRL
+                      bet_type: total
+                      metric: tries
+                      last_seen_at: '2026-04-29T10:18:00Z'
+                      sample_event_id: '3704597662'
+                    source:
+                      markets_are_approximate: true
+                      lookback_days: 30
+        '400': *id001
+        '401': *id002
+        '403': *id003
+        '404': *id004
+        '429': *id005
+        '500': *id006
+      description: Returns public bookmaker, sport, league, and recently observed
+        market coverage. Market records are approximate and based on normalized odds
+        lines seen in the configured lookback window, not a guarantee that every market
+        is available for every event at request time.
+      x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /events:
     get:
       tags:
@@ -341,6 +636,7 @@ paths:
           - type: string
           - type: 'null'
           title: Sport
+        description: Sport filter. Use `/sports` to discover supported values.
       - name: league
         in: query
         required: false
@@ -349,6 +645,8 @@ paths:
           - type: string
           - type: 'null'
           title: League
+        description: League filter. Use `/leagues?sport=...` to discover supported
+          values.
       - name: start_from
         in: query
         required: false
@@ -358,7 +656,8 @@ paths:
           - type: 'null'
           description: Unix seconds; default now.
           title: Start From
-        description: Unix seconds; default now.
+        description: Unix seconds lower bound for event start time. Use bounded windows
+          in production polling.
       - name: start_to
         in: query
         required: false
@@ -368,7 +667,8 @@ paths:
           - type: 'null'
           description: Unix seconds; optional.
           title: Start To
-        description: Unix seconds; optional.
+        description: Unix seconds upper bound for event start time. Keep windows narrow
+          for hot sync jobs.
       - name: cursor
         in: query
         required: false
@@ -378,7 +678,8 @@ paths:
           - type: 'null'
           description: 'Pagination cursor: ''start_time:event_id''.'
           title: Cursor
-        description: 'Pagination cursor: ''start_time:event_id''.'
+        description: Pagination cursor from the previous `next_cursor`. Keep filters
+          identical between pages.
       - name: limit
         in: query
         required: false
@@ -388,6 +689,7 @@ paths:
           minimum: 1
           default: 200
           title: Limit
+        description: Maximum items to return. Respect the caps returned by `/limits`.
       responses:
         '200':
           description: Successful Response
@@ -417,7 +719,9 @@ paths:
         '429': *id005
         '500': *id006
       description: Searches sports events by sport, league, team, time window, status,
-        bookmaker coverage, and pagination cursor.
+        bookmaker coverage, and pagination cursor. For production polling, use bounded
+        time windows, keep filters stable across pages, and pass `next_cursor` back
+        as `cursor` until there is no next cursor.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /events/{event_id}:
     get:
@@ -433,6 +737,7 @@ paths:
         schema:
           type: string
           title: Event Id
+        description: Canonical event or race identifier from an event list response.
       responses:
         '200':
           description: Successful Response
@@ -462,6 +767,7 @@ paths:
         schema:
           type: string
           title: Event Id
+        description: Canonical event or race identifier from an event list response.
       responses:
         '200':
           description: Successful Response
@@ -491,6 +797,7 @@ paths:
         schema:
           type: string
           title: Event Id
+        description: Canonical event or race identifier from an event list response.
       - name: limit
         in: query
         required: false
@@ -500,6 +807,7 @@ paths:
           minimum: 1
           default: 2000
           title: Limit
+        description: Maximum items to return. Respect the caps returned by `/limits`.
       - name: cursor
         in: query
         required: false
@@ -509,7 +817,8 @@ paths:
           - type: 'null'
           description: Redis HSCAN cursor
           title: Cursor
-        description: Redis HSCAN cursor
+        description: Pagination cursor from the previous `next_cursor`. Keep filters
+          identical between pages.
       - name: bookmakers
         in: query
         required: false
@@ -519,7 +828,8 @@ paths:
           - type: 'null'
           description: Comma-separated bookmaker allow-list
           title: Bookmakers
-        description: Comma-separated bookmaker allow-list
+        description: Comma-separated bookmaker allow-list. Use `/bookmakers` to discover
+          supported keys.
       - name: types
         in: query
         required: false
@@ -529,7 +839,7 @@ paths:
           - type: 'null'
           description: Comma-separated type allow-list
           title: Types
-        description: Comma-separated type allow-list
+        description: Comma-separated market type allow-list for odds filters.
       - name: market_keys
         in: query
         required: false
@@ -539,7 +849,7 @@ paths:
           - type: 'null'
           description: Comma-separated market_key allow-list
           title: Market Keys
-        description: Comma-separated market_key allow-list
+        description: Comma-separated market key allow-list for odds filters.
       - name: periods
         in: query
         required: false
@@ -549,7 +859,7 @@ paths:
           - type: 'null'
           description: Comma-separated periods allow-list
           title: Periods
-        description: Comma-separated periods allow-list
+        description: Comma-separated period allow-list for odds filters.
       responses:
         '200':
           description: Successful Response
@@ -585,8 +895,9 @@ paths:
         '429': *id005
         '500': *id006
       description: Returns the current odds lines for one event. Use filters to narrow
-        bookmakers, market types, market keys, and periods. Persist `resume` when
-        you plan to subscribe to updates.
+        bookmakers, market types, market keys, and periods. Cache by request shape,
+        display `as_of_ts_ms`, respect `ttl_seconds` when present, page with `cursor`
+        and `next_cursor`, and persist `resume` when you plan to subscribe to updates.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /events/{event_id}/odds/stream:
     get:
@@ -602,6 +913,7 @@ paths:
         schema:
           type: string
           title: Event Id
+        description: Canonical event or race identifier from an event list response.
       - name: bookmakers
         in: query
         required: false
@@ -611,7 +923,8 @@ paths:
           - type: 'null'
           description: Comma-separated bookmaker allow-list
           title: Bookmakers
-        description: Comma-separated bookmaker allow-list
+        description: Comma-separated bookmaker allow-list. Use `/bookmakers` to discover
+          supported keys.
       - name: types
         in: query
         required: false
@@ -621,7 +934,7 @@ paths:
           - type: 'null'
           description: Comma-separated type allow-list
           title: Types
-        description: Comma-separated type allow-list
+        description: Comma-separated market type allow-list for odds filters.
       - name: market_keys
         in: query
         required: false
@@ -631,7 +944,7 @@ paths:
           - type: 'null'
           description: Comma-separated market_key allow-list
           title: Market Keys
-        description: Comma-separated market_key allow-list
+        description: Comma-separated market key allow-list for odds filters.
       - name: periods
         in: query
         required: false
@@ -641,7 +954,7 @@ paths:
           - type: 'null'
           description: Comma-separated periods allow-list
           title: Periods
-        description: Comma-separated periods allow-list
+        description: Comma-separated period allow-list for odds filters.
       - name: since
         in: query
         required: false
@@ -651,7 +964,8 @@ paths:
           - type: 'null'
           description: Redis stream ID
           title: Since
-        description: Redis stream ID
+        description: Resume token from a previous snapshot or stream message. Pass
+          it after reconnecting.
       - name: catchup
         in: query
         required: false
@@ -659,6 +973,8 @@ paths:
           type: boolean
           default: true
           title: Catchup
+        description: When true, return available missed stream events after `since`
+          before waiting for new events.
       - name: heartbeat_sec
         in: query
         required: false
@@ -668,6 +984,8 @@ paths:
           minimum: 5
           default: 15
           title: Heartbeat Sec
+        description: Heartbeat interval in seconds for stream liveness. Valid range
+          is 5-120.
       - name: max_batch
         in: query
         required: false
@@ -677,6 +995,8 @@ paths:
           minimum: 1
           default: 500
           title: Max Batch
+        description: Maximum stream messages to read per batch. Default is 500; use
+          smaller batches for low-latency clients.
       responses:
         '200':
           description: Server-Sent Events stream. Each message has an event name and
@@ -708,12 +1028,22 @@ paths:
                   value:
                     event: delta
                     data:
+                      event_id: '3704597661'
                       resume: 1760000000000-0
+                      changes: []
                 heartbeat:
                   summary: Decoded heartbeat message
                   value:
                     event: heartbeat
                     data: {}
+                resync:
+                  summary: Decoded resync message
+                  value:
+                    event: resync
+                    data:
+                      event_id: '3704597661'
+                      resume: null
+                      reason: trimmed
         '400': *id001
         '401': *id002
         '403': *id003
@@ -722,7 +1052,8 @@ paths:
         '500': *id006
       description: Server-Sent Events feed for odds changes on one event. Subscribe
         after reading the snapshot and pass the snapshot `resume` value as `since`
-        to receive catch-up changes when available.
+        to receive catch-up changes when available. Handle `delta`, `heartbeat`, and
+        `resync`; reload the snapshot after `resync`.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /events/{event_id}/odds/ws:
     get:
@@ -734,6 +1065,7 @@ paths:
         schema:
           type: string
           title: Event Id
+        description: Canonical event or race identifier from an event list response.
       - name: bookmakers
         in: query
         required: false
@@ -743,7 +1075,8 @@ paths:
           - type: 'null'
           description: Comma-separated bookmaker allow-list
           title: Bookmakers
-        description: Comma-separated bookmaker allow-list
+        description: Comma-separated bookmaker allow-list. Use `/bookmakers` to discover
+          supported keys.
       - name: types
         in: query
         required: false
@@ -753,7 +1086,7 @@ paths:
           - type: 'null'
           description: Comma-separated type allow-list
           title: Types
-        description: Comma-separated type allow-list
+        description: Comma-separated market type allow-list for odds filters.
       - name: market_keys
         in: query
         required: false
@@ -763,7 +1096,7 @@ paths:
           - type: 'null'
           description: Comma-separated market_key allow-list
           title: Market Keys
-        description: Comma-separated market_key allow-list
+        description: Comma-separated market key allow-list for odds filters.
       - name: periods
         in: query
         required: false
@@ -773,7 +1106,7 @@ paths:
           - type: 'null'
           description: Comma-separated periods allow-list
           title: Periods
-        description: Comma-separated periods allow-list
+        description: Comma-separated period allow-list for odds filters.
       - name: since
         in: query
         required: false
@@ -783,7 +1116,8 @@ paths:
           - type: 'null'
           description: Redis stream ID
           title: Since
-        description: Redis stream ID
+        description: Resume token from a previous snapshot or stream message. Pass
+          it after reconnecting.
       - name: catchup
         in: query
         required: false
@@ -791,6 +1125,8 @@ paths:
           type: boolean
           default: true
           title: Catchup
+        description: When true, return available missed stream events after `since`
+          before waiting for new events.
       - name: heartbeat_sec
         in: query
         required: false
@@ -800,6 +1136,8 @@ paths:
           minimum: 5
           default: 15
           title: Heartbeat Sec
+        description: Heartbeat interval in seconds for stream liveness. Valid range
+          is 5-120.
       - name: max_batch
         in: query
         required: false
@@ -809,6 +1147,8 @@ paths:
           minimum: 1
           default: 500
           title: Max Batch
+        description: Maximum stream messages to read per batch. Default is 500; use
+          smaller batches for low-latency clients.
       responses:
         '101':
           description: WebSocket connection established. Messages are JSON objects.
@@ -839,12 +1179,22 @@ paths:
                   value:
                     event: delta
                     data:
+                      event_id: '3704597661'
                       resume: 1760000000000-0
+                      changes: []
                 heartbeat:
                   summary: Heartbeat message
                   value:
                     event: heartbeat
                     data: {}
+                resync:
+                  summary: Resync message
+                  value:
+                    event: resync
+                    data:
+                      event_id: '3704597661'
+                      resume: null
+                      reason: trimmed
         '400': *id001
         '401': *id002
         '403': *id003
@@ -857,7 +1207,8 @@ paths:
       - Sports odds
       summary: 'Event odds: Stream (WebSocket)'
       description: WebSocket feed for odds changes on one event. Messages use the
-        same `delta`, `heartbeat`, and `resync` payloads as the SSE stream.
+        same `delta`, `heartbeat`, and `resync` payloads as the SSE stream. Reconnect
+        with jittered exponential backoff and `since=<last_resume>`.
       security: *id007
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /events/{event_id}/odds/history:
@@ -874,6 +1225,7 @@ paths:
         schema:
           type: string
           title: Event Id
+        description: Canonical event or race identifier from an event list response.
       - name: selection_key
         in: query
         required: true
@@ -881,6 +1233,8 @@ paths:
           type: string
           minLength: 1
           title: Selection Key
+        description: Stable selection identifier from an odds snapshot line, used
+          for history and line movement.
       - name: market_group_id
         in: query
         required: false
@@ -889,6 +1243,7 @@ paths:
           - type: string
           - type: 'null'
           title: Market Group Id
+        description: Optional market grouping filter for history queries.
       - name: bookmakers
         in: query
         required: false
@@ -898,7 +1253,8 @@ paths:
           - type: 'null'
           description: Comma-separated bookmaker allow-list
           title: Bookmakers
-        description: Comma-separated bookmaker allow-list
+        description: Comma-separated bookmaker allow-list. Use `/bookmakers` to discover
+          supported keys.
       - name: from_ts
         in: query
         required: false
@@ -908,7 +1264,7 @@ paths:
           - type: 'null'
           description: ISO8601 UTC start
           title: From Ts
-        description: ISO8601 UTC start
+        description: ISO8601 UTC start timestamp for a bounded history query.
       - name: to_ts
         in: query
         required: false
@@ -918,7 +1274,7 @@ paths:
           - type: 'null'
           description: ISO8601 UTC end
           title: To Ts
-        description: ISO8601 UTC end
+        description: ISO8601 UTC end timestamp for a bounded history query.
       - name: price_type
         in: query
         required: false
@@ -927,6 +1283,7 @@ paths:
           pattern: ^(odds|odds_no_vig|fair_odds)$
           default: odds
           title: Price Type
+        description: History price type to return, for example odds.
       - name: include_unavailable
         in: query
         required: false
@@ -934,6 +1291,8 @@ paths:
           type: boolean
           default: false
           title: Include Unavailable
+        description: When true, include unavailable history points where the endpoint
+          supports them.
       - name: limit_points_per_bookmaker
         in: query
         required: false
@@ -943,6 +1302,8 @@ paths:
           minimum: 1
           default: 2000
           title: Limit Points Per Bookmaker
+        description: Maximum history points per bookmaker. Use this to keep chart/backtest
+          payloads bounded.
       responses:
         '200':
           description: Successful Response
@@ -950,6 +1311,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OddsHistoryResponse'
+              examples:
+                default:
+                  summary: 'Event odds history: Snapshot'
+                  value:
+                    event_id: '3704597661'
+                    selection_key: moneyline:home
+                    price_type: odds
+                    series:
+                    - bookmaker_name: bet365
+                      points:
+                      - tick_ts: '2026-04-29T08:00:00Z'
+                        is_available: true
+                        odds: 2.08
+                      - tick_ts: '2026-04-29T08:05:00Z'
+                        is_available: true
+                        odds: 2.1
+                    meta:
+                      from_ts: '2026-04-29T08:00:00Z'
+                      to_ts: '2026-04-29T09:00:00Z'
+                      available_price_types:
+                      - odds
+                      - odds_no_vig
+                      - fair_odds
         '400': *id001
         '401': *id002
         '403': *id003
@@ -957,7 +1341,9 @@ paths:
         '429': *id005
         '500': *id006
       description: Returns line movement for a single selection across bookmakers
-        and a time range. Use `selection_key` from an odds snapshot response.
+        and a time range. Use `selection_key` from an odds snapshot response, bound
+        queries with `from_ts` and `to_ts`, and narrow by bookmaker or market when
+        building charts or backtests.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /events/{event_id}/odds/history/stream:
     get:
@@ -973,6 +1359,7 @@ paths:
         schema:
           type: string
           title: Event Id
+        description: Canonical event or race identifier from an event list response.
       - name: selection_key
         in: query
         required: true
@@ -980,6 +1367,8 @@ paths:
           type: string
           minLength: 1
           title: Selection Key
+        description: Stable selection identifier from an odds snapshot line, used
+          for history and line movement.
       - name: market_group_id
         in: query
         required: false
@@ -988,6 +1377,7 @@ paths:
           - type: string
           - type: 'null'
           title: Market Group Id
+        description: Optional market grouping filter for history queries.
       - name: bookmakers
         in: query
         required: false
@@ -997,7 +1387,8 @@ paths:
           - type: 'null'
           description: Comma-separated bookmaker allow-list
           title: Bookmakers
-        description: Comma-separated bookmaker allow-list
+        description: Comma-separated bookmaker allow-list. Use `/bookmakers` to discover
+          supported keys.
       - name: price_type
         in: query
         required: false
@@ -1006,6 +1397,7 @@ paths:
           pattern: ^(odds|odds_no_vig|fair_odds)$
           default: odds_no_vig
           title: Price Type
+        description: History price type to return, for example odds.
       - name: include_unavailable
         in: query
         required: false
@@ -1013,6 +1405,8 @@ paths:
           type: boolean
           default: true
           title: Include Unavailable
+        description: When true, include unavailable history points where the endpoint
+          supports them.
       - name: since
         in: query
         required: false
@@ -1022,7 +1416,8 @@ paths:
           - type: 'null'
           description: Redis stream ID
           title: Since
-        description: Redis stream ID
+        description: Resume token from a previous snapshot or stream message. Pass
+          it after reconnecting.
       - name: catchup
         in: query
         required: false
@@ -1030,6 +1425,8 @@ paths:
           type: boolean
           default: true
           title: Catchup
+        description: When true, return available missed stream events after `since`
+          before waiting for new events.
       - name: heartbeat_sec
         in: query
         required: false
@@ -1039,6 +1436,8 @@ paths:
           minimum: 5
           default: 15
           title: Heartbeat Sec
+        description: Heartbeat interval in seconds for stream liveness. Valid range
+          is 5-120.
       - name: max_batch
         in: query
         required: false
@@ -1048,6 +1447,8 @@ paths:
           minimum: 1
           default: 500
           title: Max Batch
+        description: Maximum stream messages to read per batch. Default is 500; use
+          smaller batches for low-latency clients.
       responses:
         '200':
           description: Server-Sent Events stream. Each message has an event name and
@@ -1079,12 +1480,23 @@ paths:
                   value:
                     event: delta
                     data:
+                      event_id: '3704597661'
+                      selection_key: moneyline:home
                       resume: 1760000000000-0
+                      points: []
                 heartbeat:
                   summary: Decoded heartbeat message
                   value:
                     event: heartbeat
                     data: {}
+                resync:
+                  summary: Decoded resync message
+                  value:
+                    event: resync
+                    data:
+                      event_id: '3704597661'
+                      resume: null
+                      reason: trimmed
         '400': *id001
         '401': *id002
         '403': *id003
@@ -1104,6 +1516,7 @@ paths:
         schema:
           type: string
           title: Event Id
+        description: Canonical event or race identifier from an event list response.
       - name: selection_key
         in: query
         required: true
@@ -1111,6 +1524,8 @@ paths:
           type: string
           minLength: 1
           title: Selection Key
+        description: Stable selection identifier from an odds snapshot line, used
+          for history and line movement.
       - name: market_group_id
         in: query
         required: false
@@ -1119,6 +1534,7 @@ paths:
           - type: string
           - type: 'null'
           title: Market Group Id
+        description: Optional market grouping filter for history queries.
       - name: bookmakers
         in: query
         required: false
@@ -1128,7 +1544,8 @@ paths:
           - type: 'null'
           description: Comma-separated bookmaker allow-list
           title: Bookmakers
-        description: Comma-separated bookmaker allow-list
+        description: Comma-separated bookmaker allow-list. Use `/bookmakers` to discover
+          supported keys.
       - name: price_type
         in: query
         required: false
@@ -1137,6 +1554,7 @@ paths:
           pattern: ^(odds|odds_no_vig|fair_odds)$
           default: odds_no_vig
           title: Price Type
+        description: History price type to return, for example odds.
       - name: include_unavailable
         in: query
         required: false
@@ -1144,6 +1562,8 @@ paths:
           type: boolean
           default: true
           title: Include Unavailable
+        description: When true, include unavailable history points where the endpoint
+          supports them.
       - name: since
         in: query
         required: false
@@ -1153,7 +1573,8 @@ paths:
           - type: 'null'
           description: Redis stream ID
           title: Since
-        description: Redis stream ID
+        description: Resume token from a previous snapshot or stream message. Pass
+          it after reconnecting.
       - name: catchup
         in: query
         required: false
@@ -1161,6 +1582,8 @@ paths:
           type: boolean
           default: true
           title: Catchup
+        description: When true, return available missed stream events after `since`
+          before waiting for new events.
       - name: heartbeat_sec
         in: query
         required: false
@@ -1170,6 +1593,8 @@ paths:
           minimum: 5
           default: 15
           title: Heartbeat Sec
+        description: Heartbeat interval in seconds for stream liveness. Valid range
+          is 5-120.
       - name: max_batch
         in: query
         required: false
@@ -1179,6 +1604,8 @@ paths:
           minimum: 1
           default: 500
           title: Max Batch
+        description: Maximum stream messages to read per batch. Default is 500; use
+          smaller batches for low-latency clients.
       responses:
         '101':
           description: WebSocket connection established. Messages are JSON objects.
@@ -1209,12 +1636,23 @@ paths:
                   value:
                     event: delta
                     data:
+                      event_id: '3704597661'
+                      selection_key: moneyline:home
                       resume: 1760000000000-0
+                      points: []
                 heartbeat:
                   summary: Heartbeat message
                   value:
                     event: heartbeat
                     data: {}
+                resync:
+                  summary: Resync message
+                  value:
+                    event: resync
+                    data:
+                      event_id: '3704597661'
+                      resume: null
+                      reason: trimmed
         '400': *id001
         '401': *id002
         '403': *id003
@@ -1247,7 +1685,7 @@ paths:
           - type: 'null'
           description: Comma-separated race types.
           title: Race Type
-        description: Comma-separated race types.
+        description: Comma-separated racing type filters.
       - name: race_state
         in: query
         required: false
@@ -1257,7 +1695,7 @@ paths:
           - type: 'null'
           description: Comma-separated race states.
           title: Race State
-        description: Comma-separated race states.
+        description: Comma-separated racing state filters.
       - name: race_country
         in: query
         required: false
@@ -1267,7 +1705,7 @@ paths:
           - type: 'null'
           description: Comma-separated race countries.
           title: Race Country
-        description: Comma-separated race countries.
+        description: Comma-separated racing country filters.
       - name: status
         in: query
         required: false
@@ -1277,7 +1715,7 @@ paths:
           - type: 'null'
           description: Comma-separated statuses.
           title: Status
-        description: Comma-separated statuses.
+        description: Comma-separated status filters.
       - name: start_from
         in: query
         required: false
@@ -1287,7 +1725,8 @@ paths:
           - type: 'null'
           description: Unix seconds; default now-900.
           title: Start From
-        description: Unix seconds; default now-900.
+        description: Unix seconds lower bound for event start time. Use bounded windows
+          in production polling.
       - name: start_to
         in: query
         required: false
@@ -1297,7 +1736,8 @@ paths:
           - type: 'null'
           description: Unix seconds; optional.
           title: Start To
-        description: Unix seconds; optional.
+        description: Unix seconds upper bound for event start time. Keep windows narrow
+          for hot sync jobs.
       - name: cursor
         in: query
         required: false
@@ -1307,7 +1747,8 @@ paths:
           - type: 'null'
           description: 'Pagination cursor: ''race_start_time:event_id''.'
           title: Cursor
-        description: 'Pagination cursor: ''race_start_time:event_id''.'
+        description: Pagination cursor from the previous `next_cursor`. Keep filters
+          identical between pages.
       - name: limit
         in: query
         required: false
@@ -1317,6 +1758,7 @@ paths:
           minimum: 1
           default: 200
           title: Limit
+        description: Maximum items to return. Respect the caps returned by `/limits`.
       responses:
         '200':
           description: Successful Response
@@ -1324,6 +1766,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RacingEventListResponse'
+              examples:
+                default:
+                  summary: 'Racing events: Search'
+                  value:
+                    items:
+                    - event_id: race-1001
+                      race_type: horse
+                      race_country: AU
+                      race_state: QLD
+                      status: open
+                      race_start_time: 1760000000
+                      race_venue: Doomben
+                    next_cursor: null
+                    count: 1
         '400': *id001
         '401': *id002
         '403': *id003
@@ -1331,7 +1787,8 @@ paths:
         '429': *id005
         '500': *id006
       description: Searches upcoming and live racing events with race type, state,
-        country, status, and time filters.
+        country, status, and time filters. Racing polling should use narrow windows,
+        stable cursors, and shorter intervals near jump.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /racing/events/stream:
     get:
@@ -1350,7 +1807,8 @@ paths:
           - type: 'null'
           description: Redis stream ID
           title: Since
-        description: Redis stream ID
+        description: Resume token from a previous snapshot or stream message. Pass
+          it after reconnecting.
       - name: catchup
         in: query
         required: false
@@ -1358,6 +1816,8 @@ paths:
           type: boolean
           default: true
           title: Catchup
+        description: When true, return available missed stream events after `since`
+          before waiting for new events.
       - name: heartbeat_sec
         in: query
         required: false
@@ -1367,6 +1827,8 @@ paths:
           minimum: 5
           default: 15
           title: Heartbeat Sec
+        description: Heartbeat interval in seconds for stream liveness. Valid range
+          is 5-120.
       - name: max_batch
         in: query
         required: false
@@ -1376,6 +1838,8 @@ paths:
           minimum: 1
           default: 500
           title: Max Batch
+        description: Maximum stream messages to read per batch. Default is 500; use
+          smaller batches for low-latency clients.
       responses:
         '200':
           description: Server-Sent Events stream. Each message has an event name and
@@ -1408,11 +1872,20 @@ paths:
                     event: delta
                     data:
                       resume: 1760000000000-0
+                      changes: []
                 heartbeat:
                   summary: Decoded heartbeat message
                   value:
                     event: heartbeat
                     data: {}
+                resync:
+                  summary: Decoded resync message
+                  value:
+                    event: resync
+                    data:
+                      event_id: '3704597661'
+                      resume: null
+                      reason: trimmed
         '400': *id001
         '401': *id002
         '403': *id003
@@ -1420,7 +1893,8 @@ paths:
         '429': *id005
         '500': *id006
       description: Server-Sent Events feed for racing event inserts, updates, and
-        removals.
+        removals. Store resume tokens and reload the event list if a stream asks the
+        client to resync.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /racing/events/ws:
     get:
@@ -1435,7 +1909,8 @@ paths:
           - type: 'null'
           description: Redis stream ID
           title: Since
-        description: Redis stream ID
+        description: Resume token from a previous snapshot or stream message. Pass
+          it after reconnecting.
       - name: catchup
         in: query
         required: false
@@ -1443,6 +1918,8 @@ paths:
           type: boolean
           default: true
           title: Catchup
+        description: When true, return available missed stream events after `since`
+          before waiting for new events.
       - name: heartbeat_sec
         in: query
         required: false
@@ -1452,6 +1929,8 @@ paths:
           minimum: 5
           default: 15
           title: Heartbeat Sec
+        description: Heartbeat interval in seconds for stream liveness. Valid range
+          is 5-120.
       - name: max_batch
         in: query
         required: false
@@ -1461,6 +1940,8 @@ paths:
           minimum: 1
           default: 500
           title: Max Batch
+        description: Maximum stream messages to read per batch. Default is 500; use
+          smaller batches for low-latency clients.
       responses:
         '101':
           description: WebSocket connection established. Messages are JSON objects.
@@ -1492,11 +1973,20 @@ paths:
                     event: delta
                     data:
                       resume: 1760000000000-0
+                      changes: []
                 heartbeat:
                   summary: Heartbeat message
                   value:
                     event: heartbeat
                     data: {}
+                resync:
+                  summary: Resync message
+                  value:
+                    event: resync
+                    data:
+                      event_id: '3704597661'
+                      resume: null
+                      reason: trimmed
         '400': *id001
         '401': *id002
         '403': *id003
@@ -1509,6 +1999,7 @@ paths:
       - Racing events
       summary: 'Racing events: Stream (WebSocket)'
       description: WebSocket feed for racing event inserts, updates, and removals.
+        Messages mirror the racing events SSE feed.
       security: *id007
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /racing/events/{event_id}:
@@ -1525,6 +2016,7 @@ paths:
         schema:
           type: string
           title: Event Id
+        description: Canonical event or race identifier from an event list response.
       responses:
         '200':
           description: Successful Response
@@ -1554,6 +2046,7 @@ paths:
         schema:
           type: string
           title: Event Id
+        description: Canonical event or race identifier from an event list response.
       - name: bookmakers
         in: query
         required: false
@@ -1563,7 +2056,8 @@ paths:
           - type: 'null'
           description: Comma-separated bookmaker filter.
           title: Bookmakers
-        description: Comma-separated bookmaker filter.
+        description: Comma-separated bookmaker allow-list. Use `/bookmakers` to discover
+          supported keys.
       responses:
         '200':
           description: Successful Response
@@ -1571,13 +2065,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RacingOddsSnapshotResponse'
+              examples:
+                default:
+                  summary: 'Racing odds: Snapshot'
+                  value:
+                    event_id: race-1001
+                    as_of_ts_ms: 1760000000000
+                    items:
+                    - bookmaker_name: sportsbet
+                      race_id: race-1001
+                      status: open
+                      updated_at_ts: 1760000000
+                      payload:
+                        runners:
+                        - runner_number: '1'
+                          runner_name: Example Runner
+                          win_odds: 3.4
+                          place_odds: 1.65
+                    resume: 1760000000000-0
         '400': *id001
         '401': *id002
         '403': *id003
         '404': *id004
         '429': *id005
         '500': *id006
-      description: Returns bookmaker odds snapshots for one racing event.
+      description: Returns bookmaker odds snapshots for one racing event. Cache the
+        last good snapshot with its timestamp and prefer streams for near-jump realtime
+        displays.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /racing/events/{event_id}/odds/stream:
     get:
@@ -1593,6 +2107,7 @@ paths:
         schema:
           type: string
           title: Event Id
+        description: Canonical event or race identifier from an event list response.
       - name: since
         in: query
         required: false
@@ -1602,7 +2117,8 @@ paths:
           - type: 'null'
           description: Redis stream ID.
           title: Since
-        description: Redis stream ID.
+        description: Resume token from a previous snapshot or stream message. Pass
+          it after reconnecting.
       - name: catchup
         in: query
         required: false
@@ -1610,6 +2126,8 @@ paths:
           type: boolean
           default: true
           title: Catchup
+        description: When true, return available missed stream events after `since`
+          before waiting for new events.
       - name: heartbeat_sec
         in: query
         required: false
@@ -1619,6 +2137,8 @@ paths:
           minimum: 5
           default: 15
           title: Heartbeat Sec
+        description: Heartbeat interval in seconds for stream liveness. Valid range
+          is 5-120.
       - name: max_batch
         in: query
         required: false
@@ -1628,6 +2148,8 @@ paths:
           minimum: 1
           default: 500
           title: Max Batch
+        description: Maximum stream messages to read per batch. Default is 500; use
+          smaller batches for low-latency clients.
       responses:
         '200':
           description: Server-Sent Events stream. Each message has an event name and
@@ -1659,19 +2181,30 @@ paths:
                   value:
                     event: delta
                     data:
+                      event_id: race-1001
                       resume: 1760000000000-0
+                      changes: []
                 heartbeat:
                   summary: Decoded heartbeat message
                   value:
                     event: heartbeat
                     data: {}
+                resync:
+                  summary: Decoded resync message
+                  value:
+                    event: resync
+                    data:
+                      event_id: '3704597661'
+                      resume: null
+                      reason: trimmed
         '400': *id001
         '401': *id002
         '403': *id003
         '404': *id004
         '429': *id005
         '500': *id006
-      description: Server-Sent Events feed for racing odds changes on one event.
+      description: Server-Sent Events feed for racing odds changes on one event. Reconnect
+        with `since=<last_resume>` and reload the snapshot after `resync`.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /racing/events/{event_id}/odds/ws:
     get:
@@ -1683,6 +2216,7 @@ paths:
         schema:
           type: string
           title: Event Id
+        description: Canonical event or race identifier from an event list response.
       - name: since
         in: query
         required: false
@@ -1692,7 +2226,8 @@ paths:
           - type: 'null'
           description: Redis stream ID.
           title: Since
-        description: Redis stream ID.
+        description: Resume token from a previous snapshot or stream message. Pass
+          it after reconnecting.
       - name: catchup
         in: query
         required: false
@@ -1700,6 +2235,8 @@ paths:
           type: boolean
           default: true
           title: Catchup
+        description: When true, return available missed stream events after `since`
+          before waiting for new events.
       - name: heartbeat_sec
         in: query
         required: false
@@ -1709,6 +2246,8 @@ paths:
           minimum: 5
           default: 15
           title: Heartbeat Sec
+        description: Heartbeat interval in seconds for stream liveness. Valid range
+          is 5-120.
       - name: max_batch
         in: query
         required: false
@@ -1718,6 +2257,8 @@ paths:
           minimum: 1
           default: 500
           title: Max Batch
+        description: Maximum stream messages to read per batch. Default is 500; use
+          smaller batches for low-latency clients.
       responses:
         '101':
           description: WebSocket connection established. Messages are JSON objects.
@@ -1748,12 +2289,22 @@ paths:
                   value:
                     event: delta
                     data:
+                      event_id: race-1001
                       resume: 1760000000000-0
+                      changes: []
                 heartbeat:
                   summary: Heartbeat message
                   value:
                     event: heartbeat
                     data: {}
+                resync:
+                  summary: Resync message
+                  value:
+                    event: resync
+                    data:
+                      event_id: '3704597661'
+                      resume: null
+                      reason: trimmed
         '400': *id001
         '401': *id002
         '403': *id003
@@ -1765,7 +2316,8 @@ paths:
       tags:
       - Racing odds
       summary: 'Racing odds: Stream (WebSocket)'
-      description: WebSocket feed for racing odds changes on one event.
+      description: WebSocket feed for racing odds changes on one event. Messages mirror
+        the racing odds SSE feed.
       security: *id007
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /bets/snapshot:
@@ -1786,7 +2338,7 @@ paths:
           description: Comma-separated strategies or 'all'
           default: all
           title: Strategies
-        description: Comma-separated strategies or 'all'
+        description: Comma-separated betting strategies or `all`.
       - name: limit
         in: query
         required: false
@@ -1796,6 +2348,7 @@ paths:
           minimum: 1
           default: 2000
           title: Limit
+        description: Maximum items to return. Respect the caps returned by `/limits`.
       - name: event_id
         in: query
         required: false
@@ -1804,6 +2357,7 @@ paths:
           - type: string
           - type: 'null'
           title: Event Id
+        description: Canonical event or race identifier from an event list response.
       responses:
         '200':
           description: Successful Response
@@ -1824,8 +2378,7 @@ paths:
                       odds: 2.1
                       fair_odds: 1.95
                       ev: 7.7
-                    resume:
-                      pos_ev: 1760000000000-0
+                    resume: '{"pos_ev":"1760000000000-0"}'
         '400': *id001
         '401': *id002
         '403': *id003
@@ -1834,6 +2387,8 @@ paths:
         '500': *id006
       description: Returns current betting opportunities by strategy. Use `strategies`,
         `limit`, and `event_id` to keep the payload scoped to what your product needs.
+        Poll at a bounded interval, cache the last good response, and show execution-risk
+        language before any user-facing bet action.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /bets/stream:
     get:
@@ -1852,6 +2407,7 @@ paths:
           - type: 'null'
           default: all
           title: Strategies
+        description: Comma-separated betting strategies or `all`.
       - name: since
         in: query
         required: false
@@ -1861,7 +2417,8 @@ paths:
           - type: 'null'
           description: Resume token from /snapshot (JSON mapping strategy->id)
           title: Since
-        description: Resume token from /snapshot (JSON mapping strategy->id)
+        description: Resume token from a previous snapshot or stream message. Pass
+          it after reconnecting.
       - name: catchup
         in: query
         required: false
@@ -1869,6 +2426,8 @@ paths:
           type: boolean
           default: true
           title: Catchup
+        description: When true, return available missed stream events after `since`
+          before waiting for new events.
       - name: heartbeat_sec
         in: query
         required: false
@@ -1878,6 +2437,8 @@ paths:
           minimum: 5
           default: 15
           title: Heartbeat Sec
+        description: Heartbeat interval in seconds for stream liveness. Valid range
+          is 5-120.
       responses:
         '200':
           description: Server-Sent Events stream. Each message has an event name and
@@ -1910,11 +2471,20 @@ paths:
                     event: delta
                     data:
                       resume: 1760000000000-0
+                      events: []
                 heartbeat:
                   summary: Decoded heartbeat message
                   value:
                     event: heartbeat
                     data: {}
+                resync:
+                  summary: Decoded resync message
+                  value:
+                    event: resync
+                    data:
+                      event_id: '3704597661'
+                      resume: null
+                      reason: trimmed
         '400': *id001
         '401': *id002
         '403': *id003
@@ -1922,7 +2492,7 @@ paths:
         '429': *id005
         '500': *id006
       description: Server-Sent Events feed for betting opportunity inserts, updates,
-        and removals.
+        and removals. Use this for alerting instead of high-frequency snapshot polling.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /bets/ws:
     get:
@@ -1937,6 +2507,7 @@ paths:
           - type: 'null'
           default: all
           title: Strategies
+        description: Comma-separated betting strategies or `all`.
       - name: since
         in: query
         required: false
@@ -1946,7 +2517,8 @@ paths:
           - type: 'null'
           description: Resume token from /snapshot (JSON mapping strategy->id)
           title: Since
-        description: Resume token from /snapshot (JSON mapping strategy->id)
+        description: Resume token from a previous snapshot or stream message. Pass
+          it after reconnecting.
       - name: catchup
         in: query
         required: false
@@ -1954,6 +2526,8 @@ paths:
           type: boolean
           default: true
           title: Catchup
+        description: When true, return available missed stream events after `since`
+          before waiting for new events.
       - name: heartbeat_sec
         in: query
         required: false
@@ -1963,6 +2537,8 @@ paths:
           minimum: 5
           default: 15
           title: Heartbeat Sec
+        description: Heartbeat interval in seconds for stream liveness. Valid range
+          is 5-120.
       responses:
         '101':
           description: WebSocket connection established. Messages are JSON objects.
@@ -1994,11 +2570,20 @@ paths:
                     event: delta
                     data:
                       resume: 1760000000000-0
+                      events: []
                 heartbeat:
                   summary: Heartbeat message
                   value:
                     event: heartbeat
                     data: {}
+                resync:
+                  summary: Resync message
+                  value:
+                    event: resync
+                    data:
+                      event_id: '3704597661'
+                      resume: null
+                      reason: trimmed
         '400': *id001
         '401': *id002
         '403': *id003
@@ -2027,6 +2612,7 @@ paths:
         schema:
           type: string
           title: Event Id
+        description: Canonical event or race identifier from an event list response.
       responses:
         '200':
           description: Successful Response
@@ -2034,6 +2620,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResultItem'
+              examples:
+                default:
+                  summary: 'Results: Event result'
+                  value:
+                    event_id: '3704597661'
+                    status: final
+                    result:
+                      home_score: 24
+                      away_score: 18
         '400': *id001
         '401': *id002
         '403': *id003
@@ -2041,7 +2636,8 @@ paths:
         '429': *id005
         '500': *id006
       description: Returns the latest known result for a sports event, or `pending`
-        until settled.
+        until settled. Poll every 1-5 minutes after start, then back off once the
+        event is final.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
 components:
   schemas:
@@ -2060,6 +2656,117 @@ components:
       - event_id
       - items
       title: BookmakersResponse
+    CoverageBookmaker:
+      properties:
+        bookmaker:
+          type: string
+          title: Bookmaker
+        country_codes:
+          items:
+            type: string
+          type: array
+          title: Country Codes
+      type: object
+      required:
+      - bookmaker
+      title: CoverageBookmaker
+    CoverageLeague:
+      properties:
+        sport:
+          type: string
+          title: Sport
+        league:
+          type: string
+          title: League
+      type: object
+      required:
+      - sport
+      - league
+      title: CoverageLeague
+    CoverageMarket:
+      properties:
+        bookmaker:
+          type: string
+          title: Bookmaker
+        sport:
+          type: string
+          title: Sport
+        league:
+          type: string
+          title: League
+        bet_type:
+          type: string
+          title: Bet Type
+        metric:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Metric
+        period:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Period
+        last_seen_at:
+          type: string
+          title: Last Seen At
+        sample_event_id:
+          type: string
+          title: Sample Event Id
+      type: object
+      required:
+      - bookmaker
+      - sport
+      - league
+      - bet_type
+      - last_seen_at
+      - sample_event_id
+      title: CoverageMarket
+    CoverageResponse:
+      properties:
+        as_of:
+          type: string
+          title: As Of
+        bookmakers:
+          items:
+            $ref: '#/components/schemas/CoverageBookmaker'
+          type: array
+          title: Bookmakers
+        sports:
+          items:
+            type: string
+          type: array
+          title: Sports
+        leagues:
+          items:
+            $ref: '#/components/schemas/CoverageLeague'
+          type: array
+          title: Leagues
+        markets:
+          items:
+            $ref: '#/components/schemas/CoverageMarket'
+          type: array
+          title: Markets
+        source:
+          $ref: '#/components/schemas/CoverageSource'
+      type: object
+      required:
+      - as_of
+      - source
+      title: CoverageResponse
+    CoverageSource:
+      properties:
+        markets_are_approximate:
+          type: boolean
+          title: Markets Are Approximate
+          default: true
+        lookback_days:
+          type: integer
+          title: Lookback Days
+      type: object
+      required:
+      - lookback_days
+      title: CoverageSource
     EventDetail:
       properties:
         event_id:
@@ -2364,6 +3071,114 @@ components:
       - items
       - resume
       title: OddsSnapshotResponse
+    PublicStatusComponent:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        status:
+          type: string
+          title: Status
+        latency_source:
+          type: string
+          title: Latency Source
+          default: http
+        metrics:
+          $ref: '#/components/schemas/PublicStatusMetrics'
+      type: object
+      required:
+      - id
+      - name
+      - status
+      title: PublicStatusComponent
+    PublicStatusMetrics:
+      properties:
+        uptime_pct:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Uptime Pct
+        p50_ms:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: P50 Ms
+        p95_ms:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: P95 Ms
+        p99_ms:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: P99 Ms
+        error_rate_pct:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Error Rate Pct
+      type: object
+      title: PublicStatusMetrics
+    PublicStatusRateLimits:
+      properties:
+        status:
+          type: string
+          title: Status
+        throttled_pct:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Throttled Pct
+      type: object
+      required:
+      - status
+      title: PublicStatusRateLimits
+    PublicStatusResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+        as_of:
+          type: string
+          title: As Of
+        window_seconds:
+          type: integer
+          title: Window Seconds
+        components:
+          items:
+            $ref: '#/components/schemas/PublicStatusComponent'
+          type: array
+          title: Components
+        rate_limits:
+          $ref: '#/components/schemas/PublicStatusRateLimits'
+        source:
+          $ref: '#/components/schemas/PublicStatusSource'
+      type: object
+      required:
+      - status
+      - as_of
+      - window_seconds
+      - rate_limits
+      - source
+      title: PublicStatusResponse
+    PublicStatusSource:
+      properties:
+        fresh:
+          type: boolean
+          title: Fresh
+        age_seconds:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Age Seconds
+      type: object
+      required:
+      - fresh
+      title: PublicStatusSource
     RacingEventDetail:
       properties:
         event_id:
@@ -2678,16 +3493,41 @@ components:
           - 'null'
     UsageResponse:
       type: object
-      description: Quota and usage counters for the API key. Fields can vary by plan.
+      description: Quota and usage counters for the API key. New odds-api.net plans
+        report API credits; legacy keys may still expose request-count fields.
       additionalProperties: true
       properties:
-        period_start:
+        period_start_utc:
           type:
           - string
           - 'null'
-        period_end:
+        period_end_utc:
           type:
           - string
+          - 'null'
+        plan:
+          type:
+          - string
+          - 'null'
+        pricing_model:
+          type:
+          - string
+          - 'null'
+        api_credits_used:
+          type:
+          - integer
+          - 'null'
+        api_credits_limit:
+          type:
+          - integer
+          - 'null'
+        used:
+          type:
+          - integer
+          - 'null'
+        limit:
+          type:
+          - integer
           - 'null'
         request_count:
           type:
@@ -2735,6 +3575,37 @@ components:
             max_batch_default:
               type: integer
               example: 500
+        plan_id:
+          type:
+          - string
+          - 'null'
+        pricing_model:
+          type:
+          - string
+          - 'null'
+        billing_status:
+          type:
+          - string
+          - 'null'
+        quotas:
+          type: object
+          additionalProperties: true
+        entitlements:
+          type: object
+          additionalProperties: true
+        add_ons:
+          type: object
+          additionalProperties: true
+        usage_unit:
+          type:
+          - string
+          - 'null'
+          example: api_credits
+        overage_policy:
+          type:
+          - string
+          - 'null'
+          example: hard_cap
     StringListResponse:
       type: object
       required:
@@ -2744,7 +3615,35 @@ components:
           type: array
           items:
             type: string
-    BookmakerCountry:
+    BookmakerCatalogItem:
+      type: object
+      required:
+      - bookmaker
+      - country_codes
+      properties:
+        bookmaker:
+          type: string
+          description: Canonical bookmaker identifier accepted by bookmaker filters.
+          example: bet365
+        country_codes:
+          type: array
+          items:
+            type: string
+          description: Country codes where this bookmaker is active, for example `AU`
+            or `UK`.
+          example:
+          - AU
+          - UK
+    BookmakerCatalogResponse:
+      type: object
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookmakerCatalogItem'
+    BookmakerCountryCatalogItem:
       type: object
       required:
       - country_code
@@ -2763,7 +3662,7 @@ components:
           items:
             type: string
           description: Canonical bookmaker identifiers active for this country code.
-    BookmakerCountriesResponse:
+    BookmakerCountriesCatalogResponse:
       type: object
       required:
       - items
@@ -2771,7 +3670,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/BookmakerCountry'
+            $ref: '#/components/schemas/BookmakerCountryCatalogItem'
     BetOpportunity:
       type: object
       description: A normalized betting opportunity. Strategy-specific fields may
@@ -2839,7 +3738,7 @@ components:
           type: string
           enum:
           - upsert
-          - remove
+          - delete
         id:
           type: string
         doc:
@@ -2913,6 +3812,8 @@ components:
       type: object
       description: Sent when a resume token is no longer available and the client
         should reload the snapshot.
+      required:
+      - reason
       properties:
         event_id:
           type:
@@ -2938,10 +3839,13 @@ components:
 tags:
 - name: Start here
   description: API identity, base URL, authentication, and reference links.
+- name: Status
+  description: Buyer-facing API availability, latency, stream health, and rate-limit
+    health.
 - name: Account
   description: Current API identity, usage counters, and contract limits.
 - name: Catalog
-  description: Supported sports, leagues, and bookmakers.
+  description: Supported sports, leagues, bookmakers, and approximate market coverage.
 - name: Sports events
   description: Upcoming and live sports events plus event metadata.
 - name: Sports odds
