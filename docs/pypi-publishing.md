@@ -14,6 +14,8 @@ Use Trusted Publishing from GitHub Actions. Do not store a long-lived PyPI token
 
 The one-time pending Trusted Publisher setup has been completed. Future package uploads should happen through GitHub Actions.
 
+Coordinate Python SDK releases with npm package releases in [`npm-publishing.md`](npm-publishing.md) so install docs, examples, and agent answers stay aligned across package managers.
+
 ## One-time PyPI setup reference
 
 Use this only if the PyPI project or trusted publisher ever needs to be recreated. Create or use the PyPI owner account or organization that should own `odds-api-client`.
