@@ -149,8 +149,28 @@ export class OddsApiClient {
     return this.get("/sports");
   }
 
-  listBookmakers(): Promise<unknown> {
-    return this.get("/bookmakers");
+  getApiMetadata(): Promise<unknown> {
+    return this.get("/");
+  }
+
+  getMe(): Promise<unknown> {
+    return this.get("/me");
+  }
+
+  getUsage(): Promise<unknown> {
+    return this.get("/usage");
+  }
+
+  getLimits(): Promise<unknown> {
+    return this.get("/limits");
+  }
+
+  listBookmakers(params: QueryParams = {}): Promise<unknown> {
+    return this.get("/bookmakers", params);
+  }
+
+  listBookmakerCountries(): Promise<unknown> {
+    return this.get("/bookmakers/countries");
   }
 
   listLeagues(params: QueryParams = {}): Promise<unknown> {
@@ -161,8 +181,8 @@ export class OddsApiClient {
     return this.get("/events", params);
   }
 
-  getEvent(eventId: string): Promise<unknown> {
-    return this.get(`/events/${encodeURIComponent(eventId)}`);
+  getEvent(eventId: string, params: QueryParams = {}): Promise<unknown> {
+    return this.get(`/events/${encodeURIComponent(eventId)}`, params);
   }
 
   getEventBookmakers(eventId: string): Promise<{ event_id: string; items: string[] }> {
@@ -173,7 +193,7 @@ export class OddsApiClient {
     return this.get(`/events/${encodeURIComponent(eventId)}/odds/snapshot`, params);
   }
 
-  getOddsHistory(eventId: string, params: QueryParams): Promise<unknown> {
+  getOddsHistory(eventId: string, params: QueryParams = {}): Promise<unknown> {
     return this.get(`/events/${encodeURIComponent(eventId)}/odds/history`, params);
   }
 
@@ -201,8 +221,8 @@ export class OddsApiClient {
     return this.get("/racing/events", params);
   }
 
-  getRacingEvent(eventId: string): Promise<unknown> {
-    return this.get(`/racing/events/${encodeURIComponent(eventId)}`);
+  getRacingEvent(eventId: string, params: QueryParams = {}): Promise<unknown> {
+    return this.get(`/racing/events/${encodeURIComponent(eventId)}`, params);
   }
 
   getRacingOdds(eventId: string, params: QueryParams = {}): Promise<unknown> {

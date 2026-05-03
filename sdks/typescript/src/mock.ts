@@ -161,6 +161,51 @@ export const oddsApiMockFetch: FetchLike = async (input) => {
   const url = toUrl(input);
   const path = publicPath(url);
 
+  if (path === "/") {
+    return json({
+      name: "Odds API",
+      version: "1.0.0",
+      openapi: "/v1/openapi.json",
+      reference: "/v1/reference"
+    });
+  }
+
+  if (path === "/me") {
+    return json({
+      account_id: "acct_mock",
+      plan: "mock",
+      products: ["sports_odds", "racing_odds", "bets"],
+      capabilities: ["snapshots", "sse", "websocket"]
+    });
+  }
+
+  if (path === "/usage") {
+    return json({
+      period_start_utc: "2026-05-01T00:00:00Z",
+      period_end_utc: "2026-06-01T00:00:00Z",
+      plan: "mock",
+      pricing_model: "odds_api_net_v2",
+      api_credits_used: 42,
+      api_credits_limit: 100000,
+      exceeded: false
+    });
+  }
+
+  if (path === "/limits") {
+    return json({
+      responses: {
+        events_limit_max: 1000,
+        odds_snapshot_limit_max: 10000,
+        bets_snapshot_limit_max: 20000
+      },
+      sse: {
+        heartbeat_sec_min: 5,
+        heartbeat_sec_max: 120,
+        max_batch_default: 500
+      }
+    });
+  }
+
   if (path === "/events") {
     return json({ items: [clone(MOCK_EVENT)], next_cursor: null, count: 1 });
   }
@@ -199,7 +244,22 @@ export const oddsApiMockFetch: FetchLike = async (input) => {
   }
 
   if (path === "/bookmakers") {
-    return json({ items: clone(MOCK_BOOKMAKERS) });
+    const countryCodes = csvSet(url.searchParams.get("country_code"), true);
+    const items = clone(MOCK_BOOKMAKERS).filter((item) => {
+      if (!countryCodes) return true;
+      return item.country_codes.some((countryCode) => countryCodes.has(countryCode.toLowerCase()));
+    });
+    return json({ items });
+  }
+
+  if (path === "/bookmakers/countries") {
+    return json({
+      items: [
+        { country_code: "AU", country: "Australia", bookmakers: ["bet365", "pinnacle", "sportsbet"] },
+        { country_code: "UK", country: "United Kingdom", bookmakers: ["bet365"] },
+        { country_code: "US", country: "United States", bookmakers: ["pinnacle"] }
+      ]
+    });
   }
 
   if (path === "/sports") {

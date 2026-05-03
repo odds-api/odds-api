@@ -23,11 +23,13 @@ You are building with the Odds API: a data-access interface for odds, betting, s
 - Use `/events/{event_id}/odds/history` for line movement.
 - Use `/bets/snapshot?strategies=pos_ev` for positive EV opportunities.
 - Use `/bets/snapshot?strategies=arbitrage` for arbitrage opportunities.
-- Use `/bookmakers`, `/sports`, and `/leagues` to drive filters.
+- Use `/bookmakers`, `/bookmakers/countries`, `/sports`, and `/leagues` to drive filters.
+- Use `/me`, `/usage`, and `/limits` to inspect account capabilities, quota, and response/stream caps.
 - Use `/events/{event_id}/results` for event results.
 - Use `/racing/events` and `/racing/events/{event_id}/odds` for racing workflows.
 - Use snapshots for one-off answers and page loads.
 - Use streams for realtime products; call `odds_api.get_streaming_info` before writing custom realtime code.
+- Use `odds_api.open_stream`, `odds_api.read_stream`, and `odds_api.close_stream` for persistent MCP-managed SSE/WebSocket inspection sessions.
 - Use MCP stream sample tools only for bounded debugging/inspection. Production apps should connect directly to SSE or WebSocket endpoints.
 
 ## Do Not

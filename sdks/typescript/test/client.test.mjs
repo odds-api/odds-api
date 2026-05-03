@@ -53,6 +53,18 @@ test("mock transport mirrors public response shapes", async (t) => {
   });
 
   const client = new OddsApiClient({ baseUrl: "https://api.odds-api.net/v1" });
+  const metadata = await client.getApiMetadata();
+  assert.equal(metadata.openapi, "/v1/openapi.json");
+
+  const account = await client.getMe();
+  assert.equal(account.account_id, "acct_mock");
+
+  const usage = await client.getUsage();
+  assert.equal(usage.exceeded, false);
+
+  const limits = await client.getLimits();
+  assert.equal(limits.sse.heartbeat_sec_min, 5);
+
   const snapshot = await client.getOddsSnapshot("event-1001");
   assert.equal(snapshot.resume, "1760000000000-0");
   assert.equal(snapshot.next_cursor, null);
@@ -73,6 +85,9 @@ test("mock transport mirrors public response shapes", async (t) => {
   const bookmakers = await client.listBookmakers();
   assert.equal(bookmakers.items[0].bookmaker, "bet365");
   assert.deepEqual(bookmakers.items[0].country_codes, ["AU", "UK"]);
+
+  const bookmakerCountries = await client.listBookmakerCountries();
+  assert.equal(bookmakerCountries.items[0].country_code, "AU");
 });
 
 test("mock fetch can be injected directly", async () => {

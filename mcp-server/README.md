@@ -35,6 +35,8 @@ ODDS_API_MOCK=1 npx @odds-api/mcp
 
 ```text
 odds_api.search_events
+odds_api.get_event
+odds_api.get_event_bookmakers
 odds_api.get_odds
 odds_api.compare_odds
 odds_api.find_arbitrage
@@ -42,13 +44,26 @@ odds_api.find_positive_ev
 odds_api.get_line_movement
 odds_api.get_leagues
 odds_api.get_bookmakers
+odds_api.get_bookmaker_countries
 odds_api.get_sports
 odds_api.get_results
 odds_api.search_racing_events
+odds_api.get_racing_event
 odds_api.get_racing_odds
+odds_api.get_api_metadata
+odds_api.get_account
+odds_api.get_usage
+odds_api.get_limits
 odds_api.get_streaming_info
 odds_api.sample_odds_stream
+odds_api.sample_event_odds_history_stream
 odds_api.sample_bets_stream
+odds_api.sample_racing_events_stream
+odds_api.sample_racing_odds_stream
+odds_api.open_stream
+odds_api.read_stream
+odds_api.list_streams
+odds_api.close_stream
 odds_api.get_market_schema
 ```
 
@@ -58,10 +73,24 @@ Use `odds_api.get_streaming_info` before generating realtime code. The MCP serve
 
 ```text
 odds_api.sample_odds_stream
+odds_api.sample_event_odds_history_stream
 odds_api.sample_bets_stream
+odds_api.sample_racing_events_stream
+odds_api.sample_racing_odds_stream
 ```
 
-These tools default to `max_events: 10` and `timeout_sec: 15`, with hard limits of `max_events <= 25` and `timeout_sec <= 30`. They are not permanent live subscriptions. Production apps should connect directly to the Odds API SSE or WebSocket endpoints and handle reconnects, resume tokens, stale odds, and suspended markets.
+These tools default to `max_events: 10` and `timeout_sec: 15`, with hard limits of `max_events <= 25` and `timeout_sec <= 30`.
+
+For persistent MCP-managed inspection sessions, use:
+
+```text
+odds_api.open_stream
+odds_api.read_stream
+odds_api.list_streams
+odds_api.close_stream
+```
+
+`open_stream` supports sports odds, odds history, betting opportunities, racing events, and racing odds over both SSE and WebSocket endpoint keys. Persistent MCP sessions keep a bounded in-memory buffer in the server process. Production apps should connect directly to the Odds API SSE or WebSocket endpoints and handle reconnects, resume tokens, stale odds, and suspended markets.
 
 ## Safety
 

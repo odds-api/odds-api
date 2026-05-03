@@ -65,7 +65,22 @@ info:
     Odds can change quickly. Check `as_of_ts_ms`, handle empty arrays, suspended selections,
     rate limits, and stale
 
-    prices before displaying or acting on any betting data.'
+    prices before displaying or acting on any betting data.
+
+
+    New odds-api.net API keys default to a compact response shape that keeps essential
+    IDs, prices, teams, markets,
+
+    timestamps, and resume tokens while omitting raw payloads, source metadata, internal/debug
+    IDs, bookmaker links,
+
+    and non-offered price columns. Existing API keys keep the historical full response
+    shape unless they explicitly
+
+    pass the compacting query flags. There is no public `profile` parameter; use the
+    documented per-field flags when
+
+    you need to opt a compact client back into a specific field group.'
   version: 1.0.0
   license:
     name: Proprietary
@@ -690,6 +705,26 @@ paths:
           default: 200
           title: Limit
         description: Maximum items to return. Respect the caps returned by `/limits`.
+      - name: include_bookmaker_ids
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Bookmaker Ids
+        description: When true, include bookmaker-to-odds-data IDs and preview ID
+          maps on event responses.
+      - name: include_source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Source
+        description: When true, include per-line/per-bookmaker provenance and capture
+          metadata. Top-level freshness fields are always kept.
       responses:
         '200':
           description: Successful Response
@@ -738,6 +773,56 @@ paths:
           type: string
           title: Event Id
         description: Canonical event or race identifier from an event list response.
+      - name: include_links
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Links
+        description: When true, include bookmaker/deep-link fields such as match links
+          and racing links.
+      - name: include_raw_payload
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Raw Payload
+        description: When true, include raw stored payload/data objects where the
+          endpoint exposes them.
+      - name: include_source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Source
+        description: When true, include per-line/per-bookmaker provenance and capture
+          metadata. Top-level freshness fields are always kept.
+      - name: include_bookmaker_ids
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Bookmaker Ids
+        description: When true, include bookmaker-to-odds-data IDs and preview ID
+          maps on event responses.
+      - name: include_debug_ids
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Debug Ids
+        description: When true, include internal/subgroup/opposing IDs useful for
+          reconciliation.
       responses:
         '200':
           description: Successful Response
@@ -860,6 +945,46 @@ paths:
           description: Comma-separated periods allow-list
           title: Periods
         description: Comma-separated period allow-list for odds filters.
+      - name: price_fields
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Price Fields
+        description: '`odds`, `odds,novig`, `odds,fair`, or `all`. Compact clients
+          default to `odds`; existing clients default to current full pricing fields.'
+      - name: include_source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Source
+        description: When true, include per-line/per-bookmaker provenance and capture
+          metadata. Top-level freshness fields are always kept.
+      - name: include_debug_ids
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Debug Ids
+        description: When true, include internal/subgroup/opposing IDs useful for
+          reconciliation.
+      - name: include_unavailable
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Unavailable
+        description: When true, include unavailable or suspended rows where the endpoint
+          supports them.
       responses:
         '200':
           description: Successful Response
@@ -879,12 +1004,11 @@ paths:
                       event_id: '3704597661'
                       bookmaker: bet365
                       market_key: moneyline
-                      type: moneyline
-                      period: 0
+                      bet_type: moneyline
+                      period: full time
                       side: home
                       selection_name: Home
                       odds: 2.1
-                      odds_no_vig: 2.04
                       is_available: true
                     next_cursor: null
                     resume: 1760000000000-0
@@ -955,6 +1079,46 @@ paths:
           description: Comma-separated periods allow-list
           title: Periods
         description: Comma-separated period allow-list for odds filters.
+      - name: price_fields
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Price Fields
+        description: '`odds`, `odds,novig`, `odds,fair`, or `all`. Compact clients
+          default to `odds`; existing clients default to current full pricing fields.'
+      - name: include_source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Source
+        description: When true, include per-line/per-bookmaker provenance and capture
+          metadata. Top-level freshness fields are always kept.
+      - name: include_debug_ids
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Debug Ids
+        description: When true, include internal/subgroup/opposing IDs useful for
+          reconciliation.
+      - name: include_unavailable
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Unavailable
+        description: When true, include unavailable or suspended rows where the endpoint
+          supports them.
       - name: since
         in: query
         required: false
@@ -1107,6 +1271,46 @@ paths:
           description: Comma-separated periods allow-list
           title: Periods
         description: Comma-separated period allow-list for odds filters.
+      - name: price_fields
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Price Fields
+        description: '`odds`, `odds,novig`, `odds,fair`, or `all`. Compact clients
+          default to `odds`; existing clients default to current full pricing fields.'
+      - name: include_source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Source
+        description: When true, include per-line/per-bookmaker provenance and capture
+          metadata. Top-level freshness fields are always kept.
+      - name: include_debug_ids
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Debug Ids
+        description: When true, include internal/subgroup/opposing IDs useful for
+          reconciliation.
+      - name: include_unavailable
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Unavailable
+        description: When true, include unavailable or suspended rows where the endpoint
+          supports them.
       - name: since
         in: query
         required: false
@@ -1152,7 +1356,7 @@ paths:
       responses:
         '101':
           description: WebSocket connection established. Messages are JSON objects.
-          content:
+          content: &id008
             application/json:
               schema:
                 type: object
@@ -1201,6 +1405,10 @@ paths:
         '404': *id004
         '429': *id005
         '500': *id006
+        '200':
+          description: OpenAPI tooling compatibility response schema. Runtime WebSocket
+            connections upgrade with 101.
+          content: *id008
       x-websocket: true
       x-stream-equivalent: /events/{event_id}/odds/stream
       tags:
@@ -1284,14 +1492,45 @@ paths:
           default: odds
           title: Price Type
         description: History price type to return, for example odds.
+      - name: price_fields
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Price Fields
+        description: '`odds`, `odds,novig`, `odds,fair`, or `all`. Compact clients
+          default to `odds`; existing clients default to current full pricing fields.'
+      - name: include_source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Source
+        description: When true, include per-line/per-bookmaker provenance and capture
+          metadata. Top-level freshness fields are always kept.
+      - name: include_debug_ids
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Debug Ids
+        description: When true, include internal/subgroup/opposing IDs useful for
+          reconciliation.
       - name: include_unavailable
         in: query
         required: false
         schema:
-          type: boolean
-          default: false
+          anyOf:
+          - type: boolean
+          - type: 'null'
           title: Include Unavailable
-        description: When true, include unavailable history points where the endpoint
+        description: When true, include unavailable or suspended rows where the endpoint
           supports them.
       - name: limit_points_per_bookmaker
         in: query
@@ -1398,14 +1637,45 @@ paths:
           default: odds_no_vig
           title: Price Type
         description: History price type to return, for example odds.
+      - name: price_fields
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Price Fields
+        description: '`odds`, `odds,novig`, `odds,fair`, or `all`. Compact clients
+          default to `odds`; existing clients default to current full pricing fields.'
+      - name: include_source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Source
+        description: When true, include per-line/per-bookmaker provenance and capture
+          metadata. Top-level freshness fields are always kept.
+      - name: include_debug_ids
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Debug Ids
+        description: When true, include internal/subgroup/opposing IDs useful for
+          reconciliation.
       - name: include_unavailable
         in: query
         required: false
         schema:
-          type: boolean
-          default: true
+          anyOf:
+          - type: boolean
+          - type: 'null'
           title: Include Unavailable
-        description: When true, include unavailable history points where the endpoint
+        description: When true, include unavailable or suspended rows where the endpoint
           supports them.
       - name: since
         in: query
@@ -1555,14 +1825,45 @@ paths:
           default: odds_no_vig
           title: Price Type
         description: History price type to return, for example odds.
+      - name: price_fields
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Price Fields
+        description: '`odds`, `odds,novig`, `odds,fair`, or `all`. Compact clients
+          default to `odds`; existing clients default to current full pricing fields.'
+      - name: include_source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Source
+        description: When true, include per-line/per-bookmaker provenance and capture
+          metadata. Top-level freshness fields are always kept.
+      - name: include_debug_ids
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Debug Ids
+        description: When true, include internal/subgroup/opposing IDs useful for
+          reconciliation.
       - name: include_unavailable
         in: query
         required: false
         schema:
-          type: boolean
-          default: true
+          anyOf:
+          - type: boolean
+          - type: 'null'
           title: Include Unavailable
-        description: When true, include unavailable history points where the endpoint
+        description: When true, include unavailable or suspended rows where the endpoint
           supports them.
       - name: since
         in: query
@@ -1609,7 +1910,7 @@ paths:
       responses:
         '101':
           description: WebSocket connection established. Messages are JSON objects.
-          content:
+          content: &id009
             application/json:
               schema:
                 type: object
@@ -1659,6 +1960,10 @@ paths:
         '404': *id004
         '429': *id005
         '500': *id006
+        '200':
+          description: OpenAPI tooling compatibility response schema. Runtime WebSocket
+            connections upgrade with 101.
+          content: *id009
       x-websocket: true
       x-stream-equivalent: /events/{event_id}/odds/history/stream
       tags:
@@ -1759,6 +2064,26 @@ paths:
           default: 200
           title: Limit
         description: Maximum items to return. Respect the caps returned by `/limits`.
+      - name: include_links
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Links
+        description: When true, include bookmaker/deep-link fields such as match links
+          and racing links.
+      - name: include_source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Source
+        description: When true, include per-line/per-bookmaker provenance and capture
+          metadata. Top-level freshness fields are always kept.
       responses:
         '200':
           description: Successful Response
@@ -1798,6 +2123,36 @@ paths:
       operationId: stream_racing_events_racing_events_stream_get
       security: *id007
       parameters:
+      - name: include_links
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Links
+        description: When true, include bookmaker/deep-link fields such as match links
+          and racing links.
+      - name: include_raw_payload
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Raw Payload
+        description: When true, include raw stored payload/data objects where the
+          endpoint exposes them.
+      - name: include_source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Source
+        description: When true, include per-line/per-bookmaker provenance and capture
+          metadata. Top-level freshness fields are always kept.
       - name: since
         in: query
         required: false
@@ -1900,6 +2255,36 @@ paths:
     get:
       operationId: websocket_racing_events_ws
       parameters:
+      - name: include_links
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Links
+        description: When true, include bookmaker/deep-link fields such as match links
+          and racing links.
+      - name: include_raw_payload
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Raw Payload
+        description: When true, include raw stored payload/data objects where the
+          endpoint exposes them.
+      - name: include_source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Source
+        description: When true, include per-line/per-bookmaker provenance and capture
+          metadata. Top-level freshness fields are always kept.
       - name: since
         in: query
         required: false
@@ -1945,7 +2330,7 @@ paths:
       responses:
         '101':
           description: WebSocket connection established. Messages are JSON objects.
-          content:
+          content: &id010
             application/json:
               schema:
                 type: object
@@ -1993,6 +2378,10 @@ paths:
         '404': *id004
         '429': *id005
         '500': *id006
+        '200':
+          description: OpenAPI tooling compatibility response schema. Runtime WebSocket
+            connections upgrade with 101.
+          content: *id010
       x-websocket: true
       x-stream-equivalent: /racing/events/stream
       tags:
@@ -2017,6 +2406,36 @@ paths:
           type: string
           title: Event Id
         description: Canonical event or race identifier from an event list response.
+      - name: include_links
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Links
+        description: When true, include bookmaker/deep-link fields such as match links
+          and racing links.
+      - name: include_raw_payload
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Raw Payload
+        description: When true, include raw stored payload/data objects where the
+          endpoint exposes them.
+      - name: include_source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Source
+        description: When true, include per-line/per-bookmaker provenance and capture
+          metadata. Top-level freshness fields are always kept.
       responses:
         '200':
           description: Successful Response
@@ -2058,6 +2477,46 @@ paths:
           title: Bookmakers
         description: Comma-separated bookmaker allow-list. Use `/bookmakers` to discover
           supported keys.
+      - name: include_links
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Links
+        description: When true, include bookmaker/deep-link fields such as match links
+          and racing links.
+      - name: include_raw_payload
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Raw Payload
+        description: When true, include raw stored payload/data objects where the
+          endpoint exposes them.
+      - name: include_source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Source
+        description: When true, include per-line/per-bookmaker provenance and capture
+          metadata. Top-level freshness fields are always kept.
+      - name: include_unavailable
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Unavailable
+        description: When true, include unavailable or suspended rows where the endpoint
+          supports them.
       responses:
         '200':
           description: Successful Response
@@ -2075,7 +2534,6 @@ paths:
                     - bookmaker_name: sportsbet
                       race_id: race-1001
                       status: open
-                      updated_at_ts: 1760000000
                       payload:
                         runners:
                         - runner_number: '1'
@@ -2108,6 +2566,46 @@ paths:
           type: string
           title: Event Id
         description: Canonical event or race identifier from an event list response.
+      - name: include_links
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Links
+        description: When true, include bookmaker/deep-link fields such as match links
+          and racing links.
+      - name: include_raw_payload
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Raw Payload
+        description: When true, include raw stored payload/data objects where the
+          endpoint exposes them.
+      - name: include_source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Source
+        description: When true, include per-line/per-bookmaker provenance and capture
+          metadata. Top-level freshness fields are always kept.
+      - name: include_unavailable
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Unavailable
+        description: When true, include unavailable or suspended rows where the endpoint
+          supports them.
       - name: since
         in: query
         required: false
@@ -2217,6 +2715,46 @@ paths:
           type: string
           title: Event Id
         description: Canonical event or race identifier from an event list response.
+      - name: include_links
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Links
+        description: When true, include bookmaker/deep-link fields such as match links
+          and racing links.
+      - name: include_raw_payload
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Raw Payload
+        description: When true, include raw stored payload/data objects where the
+          endpoint exposes them.
+      - name: include_source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Source
+        description: When true, include per-line/per-bookmaker provenance and capture
+          metadata. Top-level freshness fields are always kept.
+      - name: include_unavailable
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Unavailable
+        description: When true, include unavailable or suspended rows where the endpoint
+          supports them.
       - name: since
         in: query
         required: false
@@ -2262,7 +2800,7 @@ paths:
       responses:
         '101':
           description: WebSocket connection established. Messages are JSON objects.
-          content:
+          content: &id011
             application/json:
               schema:
                 type: object
@@ -2311,6 +2849,10 @@ paths:
         '404': *id004
         '429': *id005
         '500': *id006
+        '200':
+          description: OpenAPI tooling compatibility response schema. Runtime WebSocket
+            connections upgrade with 101.
+          content: *id011
       x-websocket: true
       x-stream-equivalent: /racing/events/{event_id}/odds/stream
       tags:
@@ -2358,6 +2900,56 @@ paths:
           - type: 'null'
           title: Event Id
         description: Canonical event or race identifier from an event list response.
+      - name: price_fields
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Price Fields
+        description: '`odds`, `odds,novig`, `odds,fair`, or `all`. Compact clients
+          default to `odds`; existing clients default to current full pricing fields.'
+      - name: include_links
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Links
+        description: When true, include bookmaker/deep-link fields such as match links
+          and racing links.
+      - name: include_raw_payload
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Raw Payload
+        description: When true, include raw stored payload/data objects where the
+          endpoint exposes them.
+      - name: include_source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Source
+        description: When true, include per-line/per-bookmaker provenance and capture
+          metadata. Top-level freshness fields are always kept.
+      - name: include_debug_ids
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Debug Ids
+        description: When true, include internal/subgroup/opposing IDs useful for
+          reconciliation.
       responses:
         '200':
           description: Successful Response
@@ -2376,7 +2968,6 @@ paths:
                       bookmaker_name: Bet365
                       selection_key: moneyline:home
                       odds: 2.1
-                      fair_odds: 1.95
                       ev: 7.7
                     resume: '{"pos_ev":"1760000000000-0"}'
         '400': *id001
@@ -2408,6 +2999,56 @@ paths:
           default: all
           title: Strategies
         description: Comma-separated betting strategies or `all`.
+      - name: price_fields
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Price Fields
+        description: '`odds`, `odds,novig`, `odds,fair`, or `all`. Compact clients
+          default to `odds`; existing clients default to current full pricing fields.'
+      - name: include_links
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Links
+        description: When true, include bookmaker/deep-link fields such as match links
+          and racing links.
+      - name: include_raw_payload
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Raw Payload
+        description: When true, include raw stored payload/data objects where the
+          endpoint exposes them.
+      - name: include_source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Source
+        description: When true, include per-line/per-bookmaker provenance and capture
+          metadata. Top-level freshness fields are always kept.
+      - name: include_debug_ids
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Debug Ids
+        description: When true, include internal/subgroup/opposing IDs useful for
+          reconciliation.
       - name: since
         in: query
         required: false
@@ -2508,6 +3149,56 @@ paths:
           default: all
           title: Strategies
         description: Comma-separated betting strategies or `all`.
+      - name: price_fields
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Price Fields
+        description: '`odds`, `odds,novig`, `odds,fair`, or `all`. Compact clients
+          default to `odds`; existing clients default to current full pricing fields.'
+      - name: include_links
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Links
+        description: When true, include bookmaker/deep-link fields such as match links
+          and racing links.
+      - name: include_raw_payload
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Raw Payload
+        description: When true, include raw stored payload/data objects where the
+          endpoint exposes them.
+      - name: include_source
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Source
+        description: When true, include per-line/per-bookmaker provenance and capture
+          metadata. Top-level freshness fields are always kept.
+      - name: include_debug_ids
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Include Debug Ids
+        description: When true, include internal/subgroup/opposing IDs useful for
+          reconciliation.
       - name: since
         in: query
         required: false
@@ -2542,7 +3233,7 @@ paths:
       responses:
         '101':
           description: WebSocket connection established. Messages are JSON objects.
-          content:
+          content: &id012
             application/json:
               schema:
                 type: object
@@ -2590,6 +3281,10 @@ paths:
         '404': *id004
         '429': *id005
         '500': *id006
+        '200':
+          description: OpenAPI tooling compatibility response schema. Runtime WebSocket
+            connections upgrade with 101.
+          content: *id012
       x-websocket: true
       x-stream-equivalent: /bets/stream
       tags:
@@ -2863,6 +3558,11 @@ components:
         bookmaker:
           type: string
           title: Bookmaker
+        bookmaker_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Bookmaker Name
         selection_key:
           anyOf:
           - type: string
@@ -2877,7 +3577,9 @@ components:
           type: string
           title: Market Key
         type:
-          type: string
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Type
         bet_type:
           anyOf:
@@ -2885,7 +3587,9 @@ components:
           - type: 'null'
           title: Bet Type
         period:
-          type: integer
+          anyOf:
+          - type: integer
+          - type: string
           title: Period
         period_str:
           anyOf:
@@ -2937,7 +3641,6 @@ components:
       - event_id
       - bookmaker
       - market_key
-      - type
       - period
       title: OddLine
     OddsHistoryMeta:

@@ -260,12 +260,14 @@ SDK helpers include:
 ```text
 searchEvents        findBestOdds        compareBookmakers
 findArbitrage      findPositiveEv      getLineMovement
-getMarketSchema
+getEvent           getEventBookmakers  getRacingEvent
+getApiMetadata     getMe               getUsage
+getLimits          getMarketSchema
 ```
 
 ## MCP server
 
-The Odds API MCP server is an MCP server for sports odds and betting odds workflows. Use it when an AI coding agent needs tool access to events, odds, bookmaker comparison, arbitrage, positive EV, line movement, racing odds, results, and market schema data.
+The Odds API MCP server is an MCP server for sports odds and betting odds workflows. Use it when an AI coding agent needs tool access to events, odds, bookmaker comparison, arbitrage, positive EV, line movement, racing odds, account usage/limits, bookmaker country catalogs, results, market schema data, and persistent SSE/WebSocket stream inspection.
 
 ```json
 {

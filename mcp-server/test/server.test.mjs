@@ -12,20 +12,35 @@ test("registers the expanded Odds API MCP tool set", () => {
   const server = createServer({ baseUrl: "https://api.odds-api.net/v1" });
   const toolNames = Object.keys(server._registeredTools).sort();
   assert.deepEqual(toolNames, [
+    "odds_api.close_stream",
     "odds_api.compare_odds",
     "odds_api.find_arbitrage",
     "odds_api.find_positive_ev",
+    "odds_api.get_account",
+    "odds_api.get_api_metadata",
+    "odds_api.get_bookmaker_countries",
     "odds_api.get_bookmakers",
+    "odds_api.get_event",
+    "odds_api.get_event_bookmakers",
     "odds_api.get_leagues",
+    "odds_api.get_limits",
     "odds_api.get_line_movement",
     "odds_api.get_market_schema",
     "odds_api.get_odds",
+    "odds_api.get_racing_event",
     "odds_api.get_racing_odds",
     "odds_api.get_results",
     "odds_api.get_sports",
     "odds_api.get_streaming_info",
+    "odds_api.get_usage",
+    "odds_api.list_streams",
+    "odds_api.open_stream",
+    "odds_api.read_stream",
     "odds_api.sample_bets_stream",
+    "odds_api.sample_event_odds_history_stream",
     "odds_api.sample_odds_stream",
+    "odds_api.sample_racing_events_stream",
+    "odds_api.sample_racing_odds_stream",
     "odds_api.search_events",
     "odds_api.search_racing_events"
   ]);
@@ -35,28 +50,59 @@ test("new data tools call the matching client methods", async () => {
   const calls = [];
   const client = {
     baseUrl: "https://api.odds-api.net/v1",
+    getApiMetadata: async () => record(calls, "getApiMetadata", null, { openapi: "/v1/openapi.json" }),
+    getMe: async () => record(calls, "getMe", null, { account_id: "acct_1" }),
+    getUsage: async () => record(calls, "getUsage", null, { api_credits_used: 1 }),
+    getLimits: async () => record(calls, "getLimits", null, { responses: {} }),
+    getEvent: async (eventId, params) => record(calls, "getEvent", { eventId, params }, { event_id: eventId }),
+    getEventBookmakers: async (eventId) => record(calls, "getEventBookmakers", eventId, { event_id: eventId, items: [] }),
     listLeagues: async (params) => record(calls, "listLeagues", params, { items: ["NRL"] }),
     getResults: async (eventId) => record(calls, "getResults", eventId, { event_id: eventId }),
     searchRacingEvents: async (params) => record(calls, "searchRacingEvents", params, { items: [] }),
+    getRacingEvent: async (eventId, params) => record(calls, "getRacingEvent", { eventId, params }, { event_id: eventId }),
     getRacingOdds: async (eventId, params) => record(calls, "getRacingOdds", { eventId, params }, { event_id: eventId }),
+    listBookmakerCountries: async () => record(calls, "listBookmakerCountries", null, { items: [] }),
     listBookmakers: async () => ({ items: [] }),
     listSports: async () => ({ items: [] }),
     getMarketSchema: () => ({})
   };
   const server = createServer(client);
 
+  assert.deepEqual(await callTool(server, "odds_api.get_api_metadata", {}), { openapi: "/v1/openapi.json" });
+  assert.deepEqual(await callTool(server, "odds_api.get_account", {}), { account_id: "acct_1" });
+  assert.deepEqual(await callTool(server, "odds_api.get_usage", {}), { api_credits_used: 1 });
+  assert.deepEqual(await callTool(server, "odds_api.get_limits", {}), { responses: {} });
+  assert.deepEqual(await callTool(server, "odds_api.get_event", { event_id: "event-1", include_links: true }), {
+    event_id: "event-1"
+  });
+  assert.deepEqual(await callTool(server, "odds_api.get_event_bookmakers", { event_id: "event-1" }), {
+    event_id: "event-1",
+    items: []
+  });
   assert.deepEqual(await callTool(server, "odds_api.get_leagues", { sport: "rugby-league" }), { items: ["NRL"] });
   assert.deepEqual(await callTool(server, "odds_api.get_results", { event_id: "event-1" }), { event_id: "event-1" });
   assert.deepEqual(await callTool(server, "odds_api.search_racing_events", { limit: 5 }), { items: [] });
+  assert.deepEqual(await callTool(server, "odds_api.get_racing_event", { event_id: "race-1", include_source: true }), {
+    event_id: "race-1"
+  });
   assert.deepEqual(await callTool(server, "odds_api.get_racing_odds", { event_id: "race-1", bookmakers: "betfair" }), {
     event_id: "race-1"
   });
+  assert.deepEqual(await callTool(server, "odds_api.get_bookmaker_countries", {}), { items: [] });
 
   assert.deepEqual(calls, [
+    ["getApiMetadata", null],
+    ["getMe", null],
+    ["getUsage", null],
+    ["getLimits", null],
+    ["getEvent", { eventId: "event-1", params: { include_links: true } }],
+    ["getEventBookmakers", "event-1"],
     ["listLeagues", { sport: "rugby-league" }],
     ["getResults", "event-1"],
     ["searchRacingEvents", { limit: 5 }],
-    ["getRacingOdds", { eventId: "race-1", params: { bookmakers: "betfair" } }]
+    ["getRacingEvent", { eventId: "race-1", params: { include_source: true } }],
+    ["getRacingOdds", { eventId: "race-1", params: { bookmakers: "betfair" } }],
+    ["listBookmakerCountries", null]
   ]);
 });
 
@@ -65,7 +111,9 @@ test("streaming info explains direct SSE and WebSocket usage", async () => {
   const info = await callTool(server, "odds_api.get_streaming_info", {});
   assert.equal(info.base_url, "https://api.odds-api.net/v1");
   assert.ok(info.guidance.mcp_sampling.includes("bounded inspection"));
+  assert.ok(info.guidance.mcp_persistent.includes("open_stream"));
   assert.ok(info.sse_endpoints.some((endpoint) => endpoint.includes("/bets/stream")));
+  assert.ok(info.websocket_paths.some((path) => path.includes("/bets/ws")));
   assert.ok(info.websocket_paths.some((path) => path.includes("/odds/ws")));
 });
 
@@ -219,6 +267,76 @@ test("samples mock bets streams with JSON resume strings and delete ops", async 
   assert.deepEqual(JSON.parse(sample.events[0].data.resume), { pos_ev: "1760000000001-0" });
   assert.equal(sample.events[0].data.events[0].doc.odds_history.primary_selection_key, "moneyline:home");
   assert.equal(sample.events[0].data.events[1].op, "delete");
+});
+
+test("samples all public SSE stream families in mock mode", async (t) => {
+  const originalMock = process.env.ODDS_API_MOCK;
+  const originalFetch = globalThis.fetch;
+  process.env.ODDS_API_MOCK = "1";
+  globalThis.fetch = async () => {
+    throw new Error("mock stream sampling should not call fetch");
+  };
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalMock === undefined) delete process.env.ODDS_API_MOCK;
+    else process.env.ODDS_API_MOCK = originalMock;
+  });
+
+  const server = createServer({ baseUrl: "https://api.odds-api.net/v1" });
+
+  const history = await callTool(server, "odds_api.sample_event_odds_history_stream", {
+    event_id: "event-1001",
+    selection_key: "moneyline:home",
+    max_events: 1
+  });
+  assert.equal(history.events[0].data.selection_key, "moneyline:home");
+
+  const racingEvents = await callTool(server, "odds_api.sample_racing_events_stream", { max_events: 1 });
+  assert.equal(racingEvents.events[0].data.changes[0].event_id, "race-1001");
+
+  const racingOdds = await callTool(server, "odds_api.sample_racing_odds_stream", {
+    event_id: "race-1001",
+    max_events: 1
+  });
+  assert.equal(racingOdds.events[0].data.event_id, "race-1001");
+});
+
+test("opens, reads, lists, and closes persistent mock stream sessions", async (t) => {
+  const originalMock = process.env.ODDS_API_MOCK;
+  process.env.ODDS_API_MOCK = "1";
+  t.after(() => {
+    if (originalMock === undefined) delete process.env.ODDS_API_MOCK;
+    else process.env.ODDS_API_MOCK = originalMock;
+  });
+
+  const server = createServer({ baseUrl: "https://api.odds-api.net/v1" });
+  const opened = await callTool(server, "odds_api.open_stream", {
+    endpoint: "event_odds_ws",
+    event_id: "event-1001",
+    since: "1760000000000-0",
+    buffer_limit: 2
+  });
+  assert.equal(opened.transport, "websocket");
+  assert.ok(opened.url.startsWith("wss://api.odds-api.net/v1/events/event-1001/odds/ws"));
+  assert.equal(opened.buffered_events, 2);
+
+  const listed = await callTool(server, "odds_api.list_streams", {});
+  assert.equal(listed.count, 1);
+  assert.equal(listed.streams[0].stream_id, opened.stream_id);
+
+  const read = await callTool(server, "odds_api.read_stream", {
+    stream_id: opened.stream_id,
+    max_events: 1,
+    timeout_sec: 0
+  });
+  assert.equal(read.count, 1);
+  assert.equal(read.events[0].event, "delta");
+  assert.equal(read.buffered_events, 1);
+
+  const closed = await callTool(server, "odds_api.close_stream", { stream_id: opened.stream_id });
+  assert.equal(closed.status, "closed");
+  const afterClose = await callTool(server, "odds_api.list_streams", {});
+  assert.equal(afterClose.count, 0);
 });
 
 async function callTool(server, name, args) {
