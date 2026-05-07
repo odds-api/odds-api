@@ -267,7 +267,7 @@ getLimits          getMarketSchema
 
 ## MCP server
 
-The Odds API MCP server is an MCP server for sports odds and betting odds workflows. Use it when an AI coding agent needs tool access to events, odds, bookmaker comparison, arbitrage, positive EV, line movement, racing odds, account usage/limits, bookmaker country catalogs, results, market schema data, and persistent SSE/WebSocket stream inspection.
+The Odds API MCP server is an MCP server for sports odds and betting odds workflows. Use it when an AI coding agent needs tool access to events, odds, bookmaker comparison, arbitrage, positive EV, line movement, racing odds, account usage/limits, bookmaker country catalogs, results, market schema data, and realtime stream connection guidance.
 
 ```json
 {
@@ -291,6 +291,8 @@ ODDS_API_MOCK=1 npx @odds-api/mcp
 ```
 
 See [`mcp-server/README.md`](mcp-server/README.md) and [`docs/mcp.md`](docs/mcp.md).
+
+For realtime products, agents should call `odds_api.get_streaming_info` and `odds_api.get_stream_connection`, then generate production code that connects directly to the raw Odds API SSE/WebSocket endpoints from a backend service. MCP `open_stream` / `read_stream` / `close_stream` is also available as an optional server-side broker with reconnects and a bounded in-process buffer.
 
 ## Mock mode
 
@@ -324,6 +326,18 @@ Authenticate server-side requests with:
 ```text
 X-API-Key: <your_api_key>
 ```
+
+### Fair odds
+
+Sports odds lines can include a nullable composite fair price. Request it with `price_fields=odds,fair` or `price_fields=all`:
+
+```bash
+curl -sS \
+  -H "X-API-Key: $ODDS_API_KEY" \
+  "${ODDS_API_BASE_URL:-https://api.odds-api.net/v1}/events/<event_id>/odds/snapshot?price_fields=odds,fair"
+```
+
+Each line may include `fair_odds: number | null`. It is null when there is not enough comparable no-vig market data for that selection.
 
 ## Examples
 

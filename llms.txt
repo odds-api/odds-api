@@ -57,7 +57,8 @@ https://api.odds-api.net/v1
 - Track line movement
 - Get account identity, usage, limits, sports, leagues, bookmakers, bookmaker countries, coverage, results, racing data, and market schema
 - Discover bookmaker, sport, league, and approximate market coverage with `GET /coverage`
-- Inspect persistent SSE/WebSocket streams with MCP `open_stream`, `read_stream`, `list_streams`, and `close_stream`
+- Generate production realtime connections with MCP `get_streaming_info` and `get_stream_connection`
+- Optionally broker direct upstream SSE/WebSocket streams with MCP `open_stream`, `read_stream`, `list_streams`, and `close_stream`
 - Build dashboards, bots, alerts, scanners, and betting research tools
 
 ## Safety caveats

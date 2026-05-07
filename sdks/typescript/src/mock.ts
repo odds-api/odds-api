@@ -42,7 +42,8 @@ const MOCK_ODD_LINES = [
     side: "home",
     selection_name: "Brisbane Broncos",
     odds: 2.05,
-    odds_no_vig: 2.01
+    odds_no_vig: 2.01,
+    fair_odds: 2.04
   }),
   oddLine({
     id: "pinnacle::moneyline::moneyline::0::::home::",
@@ -57,7 +58,8 @@ const MOCK_ODD_LINES = [
     side: "home",
     selection_name: "Brisbane Broncos",
     odds: 2.11,
-    odds_no_vig: 2.07
+    odds_no_vig: 2.07,
+    fair_odds: 2.04
   }),
   oddLine({
     id: "sportsbet::moneyline::moneyline::0::::away::",
@@ -609,7 +611,33 @@ function filteredOddLines(searchParams: URLSearchParams) {
     if (marketKeys && !marketKeys.has(String(line.market_key).toLowerCase())) return false;
     if (types && !types.has(String(line.type).toLowerCase())) return false;
     return true;
-  });
+  }).map((line) => applyPriceFields(line, searchParams));
+}
+
+function applyPriceFields(line: Record<string, unknown>, searchParams: URLSearchParams) {
+  const requested = parsePriceFields(searchParams.get("price_fields"));
+  if (!requested) return line;
+
+  const out = { ...line };
+  if (!requested.has("odds")) delete out.odds;
+  if (!requested.has("odds_no_vig")) delete out.odds_no_vig;
+  if (!requested.has("fair_odds")) delete out.fair_odds;
+  return out;
+}
+
+function parsePriceFields(raw: string | null): Set<string> | null {
+  if (!raw || !raw.trim()) return null;
+  const value = raw.trim().toLowerCase();
+  if (value === "all") return new Set(["odds", "odds_no_vig", "fair_odds"]);
+
+  const out = new Set<string>();
+  for (const part of value.split(",")) {
+    const token = part.trim().toLowerCase().replace(/-/g, "_");
+    if (token === "odds" || token === "price") out.add("odds");
+    else if (token === "novig" || token === "no_vig" || token === "odds_no_vig") out.add("odds_no_vig");
+    else if (token === "fair" || token === "fair_odds") out.add("fair_odds");
+  }
+  return out.size ? out : null;
 }
 
 function csvSet(raw: string | null, lower = false): Set<string> | null {
@@ -641,6 +669,7 @@ function oddLine(input: Record<string, unknown>) {
     selection_name: null,
     odds: null,
     odds_no_vig: null,
+    fair_odds: null,
     is_available: true,
     ...input
   };

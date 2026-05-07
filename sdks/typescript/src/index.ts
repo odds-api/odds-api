@@ -47,6 +47,7 @@ export interface OddLine {
   selection_name?: string | null;
   odds?: number | null;
   odds_no_vig?: number | null;
+  fair_odds?: number | null;
   is_available: boolean;
 }
 

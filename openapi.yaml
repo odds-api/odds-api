@@ -1009,6 +1009,7 @@ paths:
                       side: home
                       selection_name: Home
                       odds: 2.1
+                      fair_odds: 1.98
                       is_available: true
                     next_cursor: null
                     resume: 1760000000000-0
@@ -1022,6 +1023,8 @@ paths:
         bookmakers, market types, market keys, and periods. Cache by request shape,
         display `as_of_ts_ms`, respect `ttl_seconds` when present, page with `cursor`
         and `next_cursor`, and persist `resume` when you plan to subscribe to updates.
+        Pass `price_fields=odds,fair` to include nullable composite fair odds alongside
+        bookmaker odds.
       x-rate-limit-note: Handle HTTP 429 with backoff and avoid tight polling loops.
   /events/{event_id}/odds/stream:
     get:
@@ -3631,6 +3634,11 @@ components:
           - type: number
           - type: 'null'
           title: Odds No Vig
+        fair_odds:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Fair Odds
         is_available:
           type: boolean
           title: Is Available

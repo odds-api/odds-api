@@ -12,8 +12,9 @@ Use this skill when building with Odds API odds, bets, events, bookmakers, resul
 3. Prefer `@odds-api/client`, `odds-api-client`, or `@odds-api/mcp`.
 4. Build the user's requested product or workflow; do not copy bundled examples by default.
 5. Use examples only as optional references for request shape, mock mode, and safety handling.
-6. Prefer snapshots for one-off answers; use `odds_api.get_streaming_info` before realtime code.
-7. Use `odds_api.open_stream`, `odds_api.read_stream`, and `odds_api.close_stream` for persistent MCP-managed stream inspection.
-8. Treat MCP stream samples as bounded inspection helpers, not permanent subscriptions.
-8. Require `ODDS_API_KEY` for live calls and support `ODDS_API_MOCK=1` for local examples.
-9. Never describe arbitrage or positive EV as guaranteed profit without execution-risk caveats.
+6. Prefer snapshots for one-off answers; use `odds_api.get_streaming_info` and `odds_api.get_stream_connection` before realtime code.
+7. For production realtime apps, connect to raw Odds API SSE/WebSocket endpoints from a backend service; never expose `ODDS_API_KEY` in browser code.
+8. Use `odds_api.open_stream`, `odds_api.read_stream`, and `odds_api.close_stream` only when MCP should act as an optional server-side broker.
+9. Treat MCP stream samples as bounded inspection helpers, not permanent subscriptions.
+10. Require `ODDS_API_KEY` for live calls and support `ODDS_API_MOCK=1` for local examples.
+11. Never describe arbitrage or positive EV as guaranteed profit without execution-risk caveats.

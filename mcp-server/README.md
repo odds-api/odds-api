@@ -55,6 +55,7 @@ odds_api.get_account
 odds_api.get_usage
 odds_api.get_limits
 odds_api.get_streaming_info
+odds_api.get_stream_connection
 odds_api.sample_odds_stream
 odds_api.sample_event_odds_history_stream
 odds_api.sample_bets_stream
@@ -69,7 +70,17 @@ odds_api.get_market_schema
 
 ## Streaming
 
-Use `odds_api.get_streaming_info` before generating realtime code. The MCP server exposes bounded SSE sampling tools for debugging and inspection:
+Use `odds_api.get_streaming_info` before generating realtime code, then use `odds_api.get_stream_connection` for the specific stream family. Production apps should connect directly to the returned raw Odds API SSE or WebSocket URL from a backend service.
+
+`get_stream_connection` returns:
+
+- snapshot URL to load initial state
+- SSE URL
+- WebSocket URL
+- required headers without exposing secret values
+- resume, catchup, resync, and browser/backend safety guidance
+
+For quick debugging, the MCP server exposes bounded SSE sample tools:
 
 ```text
 odds_api.sample_odds_stream
@@ -81,7 +92,7 @@ odds_api.sample_racing_odds_stream
 
 These tools default to `max_events: 10` and `timeout_sec: 15`, with hard limits of `max_events <= 25` and `timeout_sec <= 30`.
 
-For persistent MCP-managed inspection sessions, use:
+For optional MCP-managed broker sessions, use:
 
 ```text
 odds_api.open_stream
@@ -90,7 +101,24 @@ odds_api.list_streams
 odds_api.close_stream
 ```
 
-`open_stream` supports sports odds, odds history, betting opportunities, racing events, and racing odds over both SSE and WebSocket endpoint keys. Persistent MCP sessions keep a bounded in-memory buffer in the server process. Production apps should connect directly to the Odds API SSE or WebSocket endpoints and handle reconnects, resume tokens, stale odds, and suspended markets.
+`open_stream` supports these public OpenAPI stream families over both SSE and WebSocket endpoint keys:
+
+```text
+event_odds_sse              /events/{event_id}/odds/stream
+event_odds_ws               /events/{event_id}/odds/ws
+event_odds_history_sse      /events/{event_id}/odds/history/stream
+event_odds_history_ws       /events/{event_id}/odds/history/ws
+bets_sse                    /bets/stream
+bets_ws                     /bets/ws
+racing_events_sse           /racing/events/stream
+racing_events_ws            /racing/events/ws
+racing_odds_sse             /racing/events/{event_id}/odds/stream
+racing_odds_ws              /racing/events/{event_id}/odds/ws
+```
+
+Broker mode keeps a direct upstream SSE/WebSocket connection, reconnects with the latest resume token, and stores events in a bounded in-process buffer. `read_stream` supports the legacy drain mode and non-destructive cursor reads. If the process restarts, the buffer drops events, or `resync_required` is true, reload the snapshot before applying more deltas.
+
+Do not expose `ODDS_API_KEY` to browser code. Browser apps should use their own backend relay or a safe endpoint-specific auth flow.
 
 ## Safety
 

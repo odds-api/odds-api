@@ -26,6 +26,8 @@ odds_api.get_racing_odds
 odds_api.get_account
 odds_api.get_usage
 odds_api.get_limits
+odds_api.get_streaming_info
+odds_api.get_stream_connection
 odds_api.open_stream
 odds_api.read_stream
 odds_api.close_stream
@@ -54,4 +56,4 @@ Use mock mode for demos and generated apps:
 ODDS_API_MOCK=1 npx @odds-api/mcp
 ```
 
-Use raw REST examples instead when the user only wants one HTTP request. For realtime work, call `odds_api.get_streaming_info`; use `odds_api.open_stream`, `odds_api.read_stream`, and `odds_api.close_stream` for MCP-managed SSE/WebSocket inspection sessions.
+Use raw REST examples instead when the user only wants one HTTP request. For realtime work, call `odds_api.get_streaming_info` and `odds_api.get_stream_connection`, then connect production apps directly to the returned raw Odds API SSE/WebSocket URL from a backend service. Use `odds_api.open_stream`, `odds_api.read_stream`, and `odds_api.close_stream` only when MCP should act as an optional server-side broker with reconnects and a bounded in-process buffer.

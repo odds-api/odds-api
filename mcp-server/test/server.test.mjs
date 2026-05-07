@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { once } from "node:events";
 import test from "node:test";
+
+import { WebSocketServer } from "ws";
 
 import { consumeSseBuffer, createServer, parseSseFrame } from "../dist/index.js";
 
@@ -31,6 +34,7 @@ test("registers the expanded Odds API MCP tool set", () => {
     "odds_api.get_racing_odds",
     "odds_api.get_results",
     "odds_api.get_sports",
+    "odds_api.get_stream_connection",
     "odds_api.get_streaming_info",
     "odds_api.get_usage",
     "odds_api.list_streams",
@@ -112,9 +116,34 @@ test("streaming info explains direct SSE and WebSocket usage", async () => {
   assert.equal(info.base_url, "https://api.odds-api.net/v1");
   assert.ok(info.guidance.mcp_sampling.includes("bounded inspection"));
   assert.ok(info.guidance.mcp_persistent.includes("open_stream"));
+  assert.equal(info.stream_families.length, 5);
   assert.ok(info.sse_endpoints.some((endpoint) => endpoint.includes("/bets/stream")));
   assert.ok(info.websocket_paths.some((path) => path.includes("/bets/ws")));
   assert.ok(info.websocket_paths.some((path) => path.includes("/odds/ws")));
+  assert.equal(info.websocket_paths.some((path) => path.includes("main-lines")), false);
+  assert.equal(info.websocket_paths.some((path) => path.includes("home/sports")), false);
+  assert.equal(info.websocket_paths.some((path) => path.includes("home/racing")), false);
+});
+
+test("stream connection recipes expose public raw API stream details without secrets", async () => {
+  const server = createServer({ baseUrl: "https://api.odds-api.net/v1" });
+  const connection = await callTool(server, "odds_api.get_stream_connection", {
+    endpoint: "event_odds_ws",
+    event_id: "event-1",
+    bookmakers: "pinnacle",
+    since: "10-0",
+    catchup: true
+  });
+
+  assert.equal(connection.family, "event_odds");
+  assert.equal(connection.snapshot.path, "/events/event-1/odds/snapshot");
+  assert.equal(new URL(connection.snapshot.url).pathname, "/v1/events/event-1/odds/snapshot");
+  assert.equal(new URL(connection.sse.url).pathname, "/v1/events/event-1/odds/stream");
+  assert.equal(new URL(connection.websocket.url).protocol, "wss:");
+  assert.equal(new URL(connection.websocket.url).pathname, "/v1/events/event-1/odds/ws");
+  assert.equal(new URL(connection.websocket.url).searchParams.get("since"), "10-0");
+  assert.equal(connection.websocket.headers["X-API-Key"].includes("test_key"), false);
+  assert.equal(JSON.stringify(connection).includes("main-lines"), false);
 });
 
 test("parses SSE data and heartbeat frames", () => {
@@ -331,12 +360,152 @@ test("opens, reads, lists, and closes persistent mock stream sessions", async (t
   });
   assert.equal(read.count, 1);
   assert.equal(read.events[0].event, "delta");
+  assert.equal(read.events[0].sequence, 1);
   assert.equal(read.buffered_events, 1);
+
+  const cursorOpened = await callTool(server, "odds_api.open_stream", {
+    endpoint: "bets_sse",
+    strategies: "pos_ev",
+    buffer_limit: 5
+  });
+  const cursorRead = await callTool(server, "odds_api.read_stream", {
+    stream_id: cursorOpened.stream_id,
+    cursor: 0,
+    max_events: 2,
+    timeout_sec: 0
+  });
+  assert.equal(cursorRead.count, 2);
+  assert.equal(cursorRead.drain, false);
+  assert.equal(cursorRead.next_cursor, 2);
+  const afterCursorRead = await callTool(server, "odds_api.list_streams", {});
+  assert.equal(afterCursorRead.streams.find((stream) => stream.stream_id === cursorOpened.stream_id).buffered_events, 2);
+  await callTool(server, "odds_api.close_stream", { stream_id: cursorOpened.stream_id });
 
   const closed = await callTool(server, "odds_api.close_stream", { stream_id: opened.stream_id });
   assert.equal(closed.status, "closed");
   const afterClose = await callTool(server, "odds_api.list_streams", {});
   assert.equal(afterClose.count, 0);
+});
+
+test("persistent SSE broker reconnects with resume and exposes cursor reads", async (t) => {
+  const originalFetch = globalThis.fetch;
+  const originalApiKey = process.env.ODDS_API_KEY;
+  const originalMock = process.env.ODDS_API_MOCK;
+  process.env.ODDS_API_KEY = "test_key";
+  delete process.env.ODDS_API_MOCK;
+  const seenUrls = [];
+  let seenHeaders;
+  let calls = 0;
+  globalThis.fetch = async (url, init) => {
+    calls += 1;
+    seenUrls.push(String(url));
+    seenHeaders = init.headers;
+    const resume = calls === 1 ? "1-0" : "2-0";
+    const body = `event: delta\ndata: {\"resume\":\"${resume}\",\"i\":${calls}}\n\n`;
+    return new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(body));
+          controller.close();
+        }
+      }),
+      { status: 200, headers: { "content-type": "text/event-stream" } }
+    );
+  };
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalApiKey === undefined) delete process.env.ODDS_API_KEY;
+    else process.env.ODDS_API_KEY = originalApiKey;
+    if (originalMock === undefined) delete process.env.ODDS_API_MOCK;
+    else process.env.ODDS_API_MOCK = originalMock;
+  });
+
+  const server = createServer({ baseUrl: "https://api.odds-api.net/v1" });
+  const opened = await callTool(server, "odds_api.open_stream", {
+    endpoint: "bets_sse",
+    strategies: "pos_ev"
+  });
+  const first = await callTool(server, "odds_api.read_stream", {
+    stream_id: opened.stream_id,
+    cursor: 0,
+    max_events: 1,
+    timeout_sec: 5
+  });
+  const second = await callTool(server, "odds_api.read_stream", {
+    stream_id: opened.stream_id,
+    cursor: first.next_cursor,
+    max_events: 1,
+    timeout_sec: 5
+  });
+  await callTool(server, "odds_api.close_stream", { stream_id: opened.stream_id });
+
+  assert.equal(seenHeaders["X-API-Key"], "test_key");
+  assert.equal(first.events[0].data.i, 1);
+  assert.equal(second.events[0].data.i, 2);
+  assert.ok(second.reconnect_count >= 1);
+  assert.equal(second.last_resume, "2-0");
+  const reconnectUrl = new URL(seenUrls[1]);
+  assert.equal(reconnectUrl.searchParams.get("since"), "1-0");
+  assert.equal(reconnectUrl.searchParams.get("catchup"), "true");
+});
+
+test("persistent WebSocket broker reconnects with resume and auth headers", async (t) => {
+  const originalApiKey = process.env.ODDS_API_KEY;
+  const originalMock = process.env.ODDS_API_MOCK;
+  process.env.ODDS_API_KEY = "ws_key";
+  delete process.env.ODDS_API_MOCK;
+  const wss = new WebSocketServer({ port: 0 });
+  await once(wss, "listening");
+  const address = wss.address();
+  assert.equal(typeof address, "object");
+  const port = address.port;
+  const seenUrls = [];
+  const seenAuth = [];
+  let connections = 0;
+
+  wss.on("connection", (socket, request) => {
+    connections += 1;
+    seenUrls.push(request.url);
+    seenAuth.push(request.headers["x-api-key"]);
+    const resume = connections === 1 ? "10-0" : "11-0";
+    socket.send(JSON.stringify({ event: "delta", data: { resume, i: connections } }));
+    setTimeout(() => socket.close(1000, "test close"), 10);
+  });
+
+  t.after(() => {
+    wss.close();
+    if (originalApiKey === undefined) delete process.env.ODDS_API_KEY;
+    else process.env.ODDS_API_KEY = originalApiKey;
+    if (originalMock === undefined) delete process.env.ODDS_API_MOCK;
+    else process.env.ODDS_API_MOCK = originalMock;
+  });
+
+  const server = createServer({ baseUrl: `http://127.0.0.1:${port}/v1` });
+  const opened = await callTool(server, "odds_api.open_stream", {
+    endpoint: "bets_ws",
+    strategies: "arbitrage"
+  });
+  const first = await callTool(server, "odds_api.read_stream", {
+    stream_id: opened.stream_id,
+    cursor: 0,
+    max_events: 1,
+    timeout_sec: 5
+  });
+  const second = await callTool(server, "odds_api.read_stream", {
+    stream_id: opened.stream_id,
+    cursor: first.next_cursor,
+    max_events: 1,
+    timeout_sec: 5
+  });
+  await callTool(server, "odds_api.close_stream", { stream_id: opened.stream_id });
+
+  assert.equal(first.events[0].data.i, 1);
+  assert.equal(second.events[0].data.i, 2);
+  assert.deepEqual(seenAuth.slice(0, 2), ["ws_key", "ws_key"]);
+  assert.ok(seenUrls[0].includes("/v1/bets/ws"));
+  assert.ok(seenUrls[1].includes("since=10-0"));
+  assert.ok(seenUrls[1].includes("catchup=true"));
+  assert.ok(second.reconnect_count >= 1);
 });
 
 async function callTool(server, name, args) {

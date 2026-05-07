@@ -14,11 +14,12 @@ const DEFAULT_PERSISTENT_BUFFER_LIMIT = 200;
 const HARD_PERSISTENT_BUFFER_LIMIT = 5000;
 const DEFAULT_STREAM_READ_MAX_EVENTS = 50;
 const HARD_STREAM_READ_MAX_EVENTS = 500;
-const HARD_STREAM_READ_TIMEOUT_SEC = 10;
+const HARD_STREAM_READ_TIMEOUT_SEC = 60;
+const MAX_RECONNECT_DELAY_MS = 30_000;
 const STREAM_SAMPLE_WARNING =
   "MCP stream samples are bounded debugging snapshots. Production apps should consume SSE or WebSocket streams directly.";
 const PERSISTENT_STREAM_WARNING =
-  "Persistent MCP stream sessions are for agent inspection and supervised workflows. Production apps should connect directly to SSE or WebSocket endpoints.";
+  "Persistent MCP stream sessions maintain direct upstream SSE or WebSocket connections with reconnects and a bounded in-memory buffer. Production browser apps should still use their own backend relay or connect to Odds API with a safe server-side auth flow.";
 
 const sampleControlsSchema = {
   since: z.string().optional(),
@@ -98,6 +99,92 @@ const persistentStreamEndpointSchema = z.enum([
   "racing_odds_sse",
   "racing_odds_ws"
 ]);
+
+type PersistentStreamEndpoint = z.infer<typeof persistentStreamEndpointSchema>;
+type PersistentStreamTransport = "sse" | "websocket";
+
+interface PublicStreamFamily {
+  id: string;
+  label: string;
+  sseEndpoint: PersistentStreamEndpoint;
+  wsEndpoint: PersistentStreamEndpoint;
+  snapshotPath: string;
+  ssePath: string;
+  wsPath: string;
+  requiresEventId: boolean;
+  requiresSelectionKey: boolean;
+  snapshotDescription: string;
+}
+
+const PUBLIC_STREAM_FAMILIES: PublicStreamFamily[] = [
+  {
+    id: "event_odds",
+    label: "Event odds",
+    sseEndpoint: "event_odds_sse",
+    wsEndpoint: "event_odds_ws",
+    snapshotPath: "/events/{event_id}/odds/snapshot",
+    ssePath: "/events/{event_id}/odds/stream",
+    wsPath: "/events/{event_id}/odds/ws",
+    requiresEventId: true,
+    requiresSelectionKey: false,
+    snapshotDescription: "Fetch the event odds snapshot first, then apply stream deltas."
+  },
+  {
+    id: "event_odds_history",
+    label: "Event odds history",
+    sseEndpoint: "event_odds_history_sse",
+    wsEndpoint: "event_odds_history_ws",
+    snapshotPath: "/events/{event_id}/odds/history",
+    ssePath: "/events/{event_id}/odds/history/stream",
+    wsPath: "/events/{event_id}/odds/history/ws",
+    requiresEventId: true,
+    requiresSelectionKey: true,
+    snapshotDescription: "Fetch bounded selection history first, then apply line-movement updates."
+  },
+  {
+    id: "bets",
+    label: "Betting opportunities",
+    sseEndpoint: "bets_sse",
+    wsEndpoint: "bets_ws",
+    snapshotPath: "/bets/snapshot",
+    ssePath: "/bets/stream",
+    wsPath: "/bets/ws",
+    requiresEventId: false,
+    requiresSelectionKey: false,
+    snapshotDescription: "Fetch the scoped betting opportunity snapshot first, then apply insert/update/remove deltas."
+  },
+  {
+    id: "racing_events",
+    label: "Racing events",
+    sseEndpoint: "racing_events_sse",
+    wsEndpoint: "racing_events_ws",
+    snapshotPath: "/racing/events",
+    ssePath: "/racing/events/stream",
+    wsPath: "/racing/events/ws",
+    requiresEventId: false,
+    requiresSelectionKey: false,
+    snapshotDescription: "Fetch the racing event list first, then apply event insert/update/remove deltas."
+  },
+  {
+    id: "racing_odds",
+    label: "Racing odds",
+    sseEndpoint: "racing_odds_sse",
+    wsEndpoint: "racing_odds_ws",
+    snapshotPath: "/racing/events/{event_id}/odds",
+    ssePath: "/racing/events/{event_id}/odds/stream",
+    wsPath: "/racing/events/{event_id}/odds/ws",
+    requiresEventId: true,
+    requiresSelectionKey: false,
+    snapshotDescription: "Fetch the racing odds snapshot first, then apply odds changes."
+  }
+];
+
+const PUBLIC_STREAM_FAMILIES_BY_ENDPOINT = new Map<PersistentStreamEndpoint, PublicStreamFamily>(
+  PUBLIC_STREAM_FAMILIES.flatMap((family) => [
+    [family.sseEndpoint, family],
+    [family.wsEndpoint, family]
+  ])
+);
 
 export function createServer(client = new OddsApiClient()) {
   const server = new McpServer({
@@ -307,6 +394,34 @@ export function createServer(client = new OddsApiClient()) {
   );
 
   server.tool(
+    "odds_api.get_stream_connection",
+    "Return production connection details for one public Odds API stream family without exposing API secrets.",
+    {
+      endpoint: persistentStreamEndpointSchema,
+      event_id: z.string().optional(),
+      selection_key: z.string().optional(),
+      market_group_id: z.string().optional(),
+      bookmakers: z.string().optional(),
+      market_keys: z.string().optional(),
+      types: z.string().optional(),
+      periods: z.string().optional(),
+      price_type: z.string().optional(),
+      strategies: z.string().optional(),
+      price_fields: z.string().optional(),
+      include_links: z.boolean().optional(),
+      include_raw_payload: z.boolean().optional(),
+      include_source: z.boolean().optional(),
+      include_debug_ids: z.boolean().optional(),
+      include_unavailable: z.boolean().optional(),
+      since: z.string().optional(),
+      catchup: z.boolean().optional(),
+      heartbeat_sec: z.number().int().min(5).max(120).optional(),
+      max_batch: z.number().int().min(1).max(2000).optional()
+    },
+    async (args) => jsonResult(getStreamConnection(client.baseUrl, args as OpenStreamArgs))
+  );
+
+  server.tool(
     "odds_api.sample_odds_stream",
     "Collect a bounded SSE sample from an event odds stream for debugging.",
     {
@@ -316,7 +431,7 @@ export function createServer(client = new OddsApiClient()) {
     },
     async ({ event_id, max_events, timeout_sec, ...params }) =>
       jsonResult(
-        await sampleSseStream(client, `/events/${encodeURIComponent(event_id)}/odds/stream`, params, {
+        await sampleSseStream(client, streamPath("event_odds_sse", event_id), params, {
           max_events,
           timeout_sec
         })
@@ -333,7 +448,7 @@ export function createServer(client = new OddsApiClient()) {
     },
     async ({ event_id, max_events, timeout_sec, ...params }) =>
       jsonResult(
-        await sampleSseStream(client, `/events/${encodeURIComponent(event_id)}/odds/history/stream`, params, {
+        await sampleSseStream(client, streamPath("event_odds_history_sse", event_id), params, {
           max_events,
           timeout_sec
         })
@@ -348,7 +463,7 @@ export function createServer(client = new OddsApiClient()) {
       ...sampleControlsSchema
     },
     async ({ max_events, timeout_sec, ...params }) =>
-      jsonResult(await sampleSseStream(client, "/bets/stream", params, { max_events, timeout_sec }))
+      jsonResult(await sampleSseStream(client, streamPath("bets_sse"), params, { max_events, timeout_sec }))
   );
 
   server.tool(
@@ -359,7 +474,7 @@ export function createServer(client = new OddsApiClient()) {
       ...sampleControlsSchema
     },
     async ({ max_events, timeout_sec, ...params }) =>
-      jsonResult(await sampleSseStream(client, "/racing/events/stream", params, { max_events, timeout_sec }))
+      jsonResult(await sampleSseStream(client, streamPath("racing_events_sse"), params, { max_events, timeout_sec }))
   );
 
   server.tool(
@@ -372,7 +487,7 @@ export function createServer(client = new OddsApiClient()) {
     },
     async ({ event_id, max_events, timeout_sec, ...params }) =>
       jsonResult(
-        await sampleSseStream(client, `/racing/events/${encodeURIComponent(event_id)}/odds/stream`, params, {
+        await sampleSseStream(client, streamPath("racing_odds_sse", event_id), params, {
           max_events,
           timeout_sec
         })
@@ -410,11 +525,13 @@ export function createServer(client = new OddsApiClient()) {
 
   server.tool(
     "odds_api.read_stream",
-    "Read and drain buffered events from a persistent MCP stream session.",
+    "Read buffered events from a persistent MCP stream session. Default behavior drains for compatibility; pass cursor for non-destructive reads.",
     {
       stream_id: z.string(),
       max_events: z.number().int().min(1).max(HARD_STREAM_READ_MAX_EVENTS).optional(),
-      timeout_sec: z.number().int().min(0).max(HARD_STREAM_READ_TIMEOUT_SEC).optional()
+      timeout_sec: z.number().int().min(0).max(HARD_STREAM_READ_TIMEOUT_SEC).optional(),
+      cursor: z.number().int().min(0).optional(),
+      drain: z.boolean().optional()
     },
     async (args) => jsonResult(await streamManager.read(args.stream_id, args))
   );
@@ -466,9 +583,7 @@ interface StreamSampleResult {
   warning: string;
 }
 
-type PersistentStreamEndpoint = z.infer<typeof persistentStreamEndpointSchema>;
-type PersistentStreamTransport = "sse" | "websocket";
-type PersistentStreamStatus = "connecting" | "open" | "closed" | "error";
+type PersistentStreamStatus = "connecting" | "open" | "reconnecting" | "closed" | "error";
 
 interface OpenStreamArgs extends QueryParams {
   endpoint: PersistentStreamEndpoint;
@@ -480,16 +595,24 @@ interface OpenStreamArgs extends QueryParams {
 interface PersistentStreamSpec {
   endpoint: PersistentStreamEndpoint;
   transport: PersistentStreamTransport;
+  family: PublicStreamFamily;
+  baseUrl: string;
   path: string;
   mockPath: string;
   url: string;
   mockUrl: string;
   params: QueryParams;
   bufferLimit: number;
+  initialResume?: string;
+}
+
+interface BufferedStreamMessage extends SseMessage {
+  sequence: number;
 }
 
 interface PersistentStreamState {
   id: string;
+  spec: PersistentStreamSpec;
   endpoint: PersistentStreamEndpoint;
   transport: PersistentStreamTransport;
   path: string;
@@ -497,9 +620,14 @@ interface PersistentStreamState {
   status: PersistentStreamStatus;
   created_at: string;
   updated_at: string;
-  events: SseMessage[];
+  events: BufferedStreamMessage[];
+  next_sequence: number;
+  last_resume?: string;
+  reconnect_count: number;
+  resync_required: boolean;
   dropped_events: number;
   buffer_limit: number;
+  closed_by_client: boolean;
   error?: string;
   controller?: AbortController;
   socket?: WebSocket;
@@ -508,6 +636,8 @@ interface PersistentStreamState {
 interface StreamReadOptions {
   max_events?: number;
   timeout_sec?: number;
+  cursor?: number;
+  drain?: boolean;
 }
 
 class PersistentStreamManager {
@@ -519,6 +649,7 @@ class PersistentStreamManager {
     const spec = buildPersistentStreamSpec(this.client.baseUrl, args);
     const stream: PersistentStreamState = {
       id: createStreamId(),
+      spec,
       endpoint: spec.endpoint,
       transport: spec.transport,
       path: spec.path,
@@ -527,8 +658,13 @@ class PersistentStreamManager {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       events: [],
+      next_sequence: 1,
+      last_resume: spec.initialResume,
+      reconnect_count: 0,
+      resync_required: false,
       dropped_events: 0,
-      buffer_limit: spec.bufferLimit
+      buffer_limit: spec.bufferLimit,
+      closed_by_client: false
     };
     this.streams.set(stream.id, stream);
 
@@ -538,12 +674,7 @@ class PersistentStreamManager {
       return this.summary(stream, { warning: PERSISTENT_STREAM_WARNING });
     }
 
-    if (spec.transport === "sse") {
-      this.startSse(stream);
-    } else {
-      this.startWebSocket(stream);
-    }
-
+    this.startBroker(stream);
     return this.summary(stream, { warning: PERSISTENT_STREAM_WARNING });
   }
 
@@ -551,18 +682,36 @@ class PersistentStreamManager {
     const stream = this.requireStream(streamId);
     const maxEvents = boundedInteger(options.max_events, DEFAULT_STREAM_READ_MAX_EVENTS, HARD_STREAM_READ_MAX_EVENTS);
     const timeoutSec = boundedInteger(options.timeout_sec, 0, HARD_STREAM_READ_TIMEOUT_SEC, 0);
+    const cursor = normalizeCursor(options.cursor);
+    const drain = cursor === undefined ? options.drain !== false : false;
     const deadline = Date.now() + timeoutSec * 1000;
 
-    while (!stream.events.length && stream.status !== "closed" && stream.status !== "error" && Date.now() < deadline) {
+    while (!this.hasReadableEvents(stream, cursor) && stream.status !== "closed" && stream.status !== "error" && Date.now() < deadline) {
       await delay(100);
     }
 
-    const events = stream.events.splice(0, maxEvents);
+    const oldestBeforeRead = this.oldestSequence(stream);
+    const missedEvents = cursor !== undefined && oldestBeforeRead !== null && cursor < oldestBeforeRead - 1;
+    const events =
+      cursor === undefined
+        ? stream.events.slice(0, maxEvents)
+        : stream.events.filter((event) => event.sequence > cursor).slice(0, maxEvents);
+    if (drain && cursor === undefined) {
+      stream.events.splice(0, events.length);
+    }
+    if (missedEvents) {
+      stream.resync_required = true;
+    }
     stream.updated_at = new Date().toISOString();
+    const latestSequence = this.latestSequence(stream);
     return {
       ...this.summary(stream),
       count: events.length,
-      events
+      events,
+      cursor: cursor ?? null,
+      next_cursor: events.length ? events[events.length - 1].sequence : cursor ?? latestSequence,
+      drain,
+      missed_events: missedEvents
     };
   }
 
@@ -575,6 +724,7 @@ class PersistentStreamManager {
 
   async close(streamId: string) {
     const stream = this.requireStream(streamId);
+    stream.closed_by_client = true;
     stream.status = "closed";
     stream.updated_at = new Date().toISOString();
     stream.controller?.abort();
@@ -583,83 +733,176 @@ class PersistentStreamManager {
     return this.summary(stream);
   }
 
-  private startSse(stream: PersistentStreamState): void {
-    const controller = new AbortController();
-    stream.controller = controller;
-    void (async () => {
-      try {
-        const response = await fetch(stream.url, {
-          headers: streamHeaders(),
-          signal: controller.signal
-        });
-        if (!response.ok) {
-          const body = await response.text();
-          throw new Error(`SSE stream failed with status ${response.status}: ${body}`);
-        }
-        if (!response.body) {
-          throw new Error("SSE stream response did not include a readable body");
-        }
-        stream.status = "open";
-        stream.updated_at = new Date().toISOString();
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        while ((stream.status as PersistentStreamStatus) !== "closed") {
-          const readResult = await reader.read();
-          if (readResult.done) break;
-          buffer += decoder.decode(readResult.value, { stream: true });
-          const parsed = consumeSseBuffer(buffer);
-          buffer = parsed.remainder;
-          this.pushMany(stream, parsed.events);
-        }
-        if ((stream.status as PersistentStreamStatus) !== "closed") stream.status = "closed";
-      } catch (error) {
-        if (controller.signal.aborted || stream.status === "closed") {
-          stream.status = "closed";
-        } else {
-          stream.status = "error";
-          stream.error = errorMessage(error);
-        }
-      } finally {
-        stream.updated_at = new Date().toISOString();
-      }
-    })();
+  private startBroker(stream: PersistentStreamState): void {
+    void this.runBroker(stream);
   }
 
-  private startWebSocket(stream: PersistentStreamState): void {
-    const socket = new WebSocket(stream.url, {
-      headers: authHeaders()
-    });
-    stream.socket = socket;
-    socket.on("open", () => {
+  private async runBroker(stream: PersistentStreamState): Promise<void> {
+    let attempt = 0;
+    while (!stream.closed_by_client) {
+      stream.url = this.connectionUrl(stream);
+      stream.status = attempt === 0 && stream.next_sequence === 1 ? "connecting" : "reconnecting";
+      stream.updated_at = new Date().toISOString();
+
+      try {
+        if (stream.transport === "sse") {
+          await this.connectSse(stream);
+        } else {
+          await this.connectWebSocket(stream);
+        }
+        if (stream.closed_by_client) break;
+        if ((stream.status as PersistentStreamStatus) === "open") attempt = 0;
+        stream.error = "Upstream stream closed";
+      } catch (error) {
+        if (stream.closed_by_client) break;
+        stream.error = errorMessage(error);
+        if (isTerminalStreamError(error)) {
+          stream.status = "error";
+          stream.updated_at = new Date().toISOString();
+          return;
+        }
+      }
+
+      if (stream.closed_by_client) break;
+      stream.reconnect_count += 1;
+      attempt += 1;
+      stream.status = "reconnecting";
+      stream.updated_at = new Date().toISOString();
+      await delay(reconnectDelayMs(attempt));
+    }
+
+    stream.status = "closed";
+    stream.updated_at = new Date().toISOString();
+  }
+
+  private async connectSse(stream: PersistentStreamState): Promise<void> {
+    const controller = new AbortController();
+    stream.controller = controller;
+    try {
+      const response = await fetch(stream.url, {
+        headers: streamHeaders(),
+        signal: controller.signal
+      });
+      if (!response.ok) {
+        const body = await response.text();
+        throw new StreamHttpError(response.status, `SSE stream failed with status ${response.status}: ${body}`);
+      }
+      if (!response.body) {
+        throw new Error("SSE stream response did not include a readable body");
+      }
       stream.status = "open";
+      delete stream.error;
       stream.updated_at = new Date().toISOString();
-    });
-    socket.on("message", (data) => {
-      const event = parseWebSocketMessage(data);
-      if (event) this.pushMany(stream, [event]);
-    });
-    socket.on("error", (error) => {
-      stream.status = "error";
-      stream.error = errorMessage(error);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (!stream.closed_by_client) {
+        const readResult = await reader.read();
+        if (readResult.done) break;
+        buffer += decoder.decode(readResult.value, { stream: true });
+        const parsed = consumeSseBuffer(buffer);
+        buffer = parsed.remainder;
+        this.pushMany(stream, parsed.events);
+      }
+    } finally {
+      if (stream.controller === controller) {
+        stream.controller = undefined;
+      }
       stream.updated_at = new Date().toISOString();
-    });
-    socket.on("close", () => {
-      if (stream.status !== "error") stream.status = "closed";
-      stream.updated_at = new Date().toISOString();
+    }
+  }
+
+  private connectWebSocket(stream: PersistentStreamState): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const socket = new WebSocket(stream.url, {
+        headers: authHeaders()
+      });
+      stream.socket = socket;
+      let settled = false;
+      let socketError: Error | undefined;
+
+      const settle = (callback: () => void) => {
+        if (settled) return;
+        settled = true;
+        if (stream.socket === socket) {
+          stream.socket = undefined;
+        }
+        stream.updated_at = new Date().toISOString();
+        callback();
+      };
+
+      socket.on("open", () => {
+        stream.status = "open";
+        delete stream.error;
+        stream.updated_at = new Date().toISOString();
+      });
+      socket.on("message", (data) => {
+        const event = parseWebSocketMessage(data);
+        if (event) this.pushMany(stream, [event]);
+      });
+      socket.on("error", (error) => {
+        socketError = error instanceof Error ? error : new Error(String(error));
+      });
+      socket.on("close", (code, reason) => {
+        settle(() => {
+          if (stream.closed_by_client) {
+            resolve();
+            return;
+          }
+          if (socketError) {
+            reject(socketError);
+            return;
+          }
+          if (isTerminalWebSocketClose(code)) {
+            reject(new Error(`WebSocket closed with code ${code}: ${rawDataToString(reason)}`));
+            return;
+          }
+          resolve();
+        });
+      });
     });
   }
 
   private pushMany(stream: PersistentStreamState, events: SseMessage[]): void {
     for (const event of events) {
-      stream.events.push(event);
+      const buffered = { ...event, sequence: stream.next_sequence++ };
+      stream.events.push(buffered);
+      const resume = extractResume(event);
+      if (resume) stream.last_resume = resume;
+      if (event.event === "resync") stream.resync_required = true;
       if (stream.events.length > stream.buffer_limit) {
         stream.events.shift();
         stream.dropped_events += 1;
+        stream.resync_required = true;
       }
     }
     if (events.length) stream.updated_at = new Date().toISOString();
+  }
+
+  private connectionUrl(stream: PersistentStreamState): string {
+    if (stream.next_sequence === 1 && stream.reconnect_count === 0) {
+      return stream.spec.url;
+    }
+    const params = { ...stream.spec.params };
+    if (stream.last_resume) {
+      params.since = stream.last_resume;
+      params.catchup = true;
+    }
+    return buildStreamUrl(stream.spec.baseUrl, stream.spec.path, params, stream.spec.transport);
+  }
+
+  private hasReadableEvents(stream: PersistentStreamState, cursor: number | undefined): boolean {
+    if (cursor === undefined) return stream.events.length > 0;
+    return stream.events.some((event) => event.sequence > cursor);
+  }
+
+  private oldestSequence(stream: PersistentStreamState): number | null {
+    return stream.events.length ? stream.events[0].sequence : null;
+  }
+
+  private latestSequence(stream: PersistentStreamState): number {
+    return stream.next_sequence - 1;
   }
 
   private requireStream(streamId: string): PersistentStreamState {
@@ -676,14 +919,27 @@ class PersistentStreamManager {
       path: stream.path,
       url: stream.url,
       status: stream.status,
+      sequence: this.latestSequence(stream),
+      latest_sequence: this.latestSequence(stream),
+      oldest_sequence: this.oldestSequence(stream),
+      last_resume: stream.last_resume ?? null,
+      reconnect_count: stream.reconnect_count,
       buffered_events: stream.events.length,
       dropped_events: stream.dropped_events,
+      resync_required: stream.resync_required,
       buffer_limit: stream.buffer_limit,
       created_at: stream.created_at,
       updated_at: stream.updated_at,
       ...(stream.error ? { error: stream.error } : {}),
       ...extra
     };
+  }
+}
+
+class StreamHttpError extends Error {
+  constructor(readonly status: number, message: string) {
+    super(message);
+    this.name = "StreamHttpError";
   }
 }
 
@@ -704,11 +960,11 @@ function getStreamingInfo(baseUrl: string) {
     base_url: normalizedBaseUrl,
     guidance: {
       snapshots: "Use snapshots for one-off answers, page loads, server rendering, and low-frequency refreshes.",
-      streams: "Use SSE or WebSocket streams for realtime products that need incremental updates.",
-      mcp_sampling:
-        "Use odds_api.sample_*_stream tools for bounded inspection only.",
+      streams:
+        "For production realtime apps, connect directly to the public Odds API SSE or WebSocket URLs returned by odds_api.get_stream_connection.",
+      mcp_sampling: "Use odds_api.sample_*_stream tools for bounded inspection only.",
       mcp_persistent:
-        "Use odds_api.open_stream, odds_api.read_stream, odds_api.list_streams, and odds_api.close_stream for persistent MCP-managed SSE or WebSocket inspection sessions. Production apps should connect directly to SSE or WebSocket endpoints."
+        "Use odds_api.open_stream, odds_api.read_stream, odds_api.list_streams, and odds_api.close_stream when you want the MCP process to act as an optional server-side stream broker with reconnects and a bounded in-memory buffer."
     },
     auth: {
       server_side: "Send X-API-Key with ODDS_API_KEY.",
@@ -719,96 +975,132 @@ function getStreamingInfo(baseUrl: string) {
       catchup: "When supported, include recent changes before live updates.",
       heartbeat_sec: "Heartbeat interval. Typical range is 5-120 seconds."
     },
-    sse_endpoints: [
-      `${normalizedBaseUrl}/events/{event_id}/odds/stream`,
-      `${normalizedBaseUrl}/events/{event_id}/odds/history/stream`,
-      `${normalizedBaseUrl}/bets/stream`,
-      `${normalizedBaseUrl}/racing/events/stream`,
-      `${normalizedBaseUrl}/racing/events/{event_id}/odds/stream`
-    ],
-    websocket_paths: [
-      "/events/{event_id}/odds/ws",
-      "/events/{event_id}/odds/history/ws",
-      "/bets/ws",
-      "/racing/events/ws",
-      "/racing/events/{event_id}/odds/ws",
-      "/odds/main-lines/ws",
-      "/odds/home/sports/ws",
-      "/odds/home/racing/ws"
-    ],
+    stream_families: PUBLIC_STREAM_FAMILIES.map((family) => ({
+      id: family.id,
+      label: family.label,
+      snapshot_path: family.snapshotPath,
+      sse_endpoint: family.sseEndpoint,
+      sse_url: `${normalizedBaseUrl}${family.ssePath}`,
+      websocket_endpoint: family.wsEndpoint,
+      websocket_path: family.wsPath,
+      requires_event_id: family.requiresEventId,
+      requires_selection_key: family.requiresSelectionKey
+    })),
+    sse_endpoints: PUBLIC_STREAM_FAMILIES.map((family) => `${normalizedBaseUrl}${family.ssePath}`),
+    websocket_paths: PUBLIC_STREAM_FAMILIES.map((family) => family.wsPath),
     safety:
       "Treat streamed prices as time-sensitive. Handle disconnects, stale odds, suspended markets, limits, voids, and execution risk."
   };
 }
 
+function getStreamConnection(baseUrl: string, args: OpenStreamArgs) {
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
+  const family = streamFamilyForEndpoint(args.endpoint);
+  validateStreamArgs(family, args);
+  const snapshotPath = renderPublicStreamPath(family.snapshotPath, args.event_id, args.endpoint);
+  const ssePath = renderPublicStreamPath(family.ssePath, args.event_id, family.sseEndpoint);
+  const wsPath = renderPublicStreamPath(family.wsPath, args.event_id, family.wsEndpoint);
+  const streamParams = streamQueryParams(args);
+  const snapshotParams = snapshotQueryParams(args);
+
+  return {
+    base_url: normalizedBaseUrl,
+    family: family.id,
+    label: family.label,
+    requested_endpoint: args.endpoint,
+    recommended_transport: streamTransport(args.endpoint),
+    snapshot: {
+      path: snapshotPath,
+      url: buildStreamUrl(normalizedBaseUrl, snapshotPath, snapshotParams),
+      description: family.snapshotDescription
+    },
+    sse: {
+      endpoint: family.sseEndpoint,
+      path: ssePath,
+      url: buildStreamUrl(normalizedBaseUrl, ssePath, streamParams, "sse"),
+      headers: {
+        Accept: "text/event-stream",
+        "X-API-Key": "Set from ODDS_API_KEY on your server; the MCP tool intentionally does not return secrets."
+      }
+    },
+    websocket: {
+      endpoint: family.wsEndpoint,
+      path: wsPath,
+      url: buildStreamUrl(normalizedBaseUrl, wsPath, streamParams, "websocket"),
+      headers: {
+        "X-API-Key": "Set from ODDS_API_KEY on your server; the MCP tool intentionally does not return secrets."
+      }
+    },
+    resume: {
+      snapshot_first: "Read the snapshot first and store its resume token when present.",
+      reconnect: "On disconnect, reconnect with since=<last_resume> and catchup=true.",
+      resync: "If a stream emits event=resync or the MCP broker reports resync_required=true, reload the snapshot before applying more deltas."
+    },
+    production_guidance: {
+      primary_path:
+        "Production apps should connect directly to the raw Odds API SSE or WebSocket URL from a backend service.",
+      browser_safety:
+        "Never expose ODDS_API_KEY in browser code. Use your own backend relay or a safe auth mode approved for the endpoint.",
+      mcp_broker:
+        "MCP open_stream/read_stream can be used as an optional server-side broker. It keeps an in-process bounded buffer, so restart or dropped-buffer recovery requires resnapshot."
+    },
+    safety:
+      "Display timestamps, handle stale odds and suspended markets, back off on 429, and never present betting outcomes as guaranteed."
+  };
+}
+
 function buildPersistentStreamSpec(baseUrl: string, args: OpenStreamArgs): PersistentStreamSpec {
   const endpoint = args.endpoint;
-  const eventId = args.event_id;
-  const transport = endpoint.endsWith("_ws") ? "websocket" : "sse";
-  const path = streamPath(endpoint, eventId);
-  const mockPath = streamPath(equivalentSseEndpoint(endpoint), eventId);
+  const family = streamFamilyForEndpoint(endpoint);
+  validateStreamArgs(family, args);
+  const transport = streamTransport(endpoint);
+  const path = streamPath(endpoint, args.event_id);
+  const mockPath = streamPath(family.sseEndpoint, args.event_id);
   const params = streamQueryParams(args);
-
-  if (isHistoryEndpoint(endpoint) && !args.selection_key) {
-    throw new Error("selection_key is required for event odds history streams");
-  }
 
   return {
     endpoint,
     transport,
+    family,
+    baseUrl,
     path,
     mockPath,
     url: buildStreamUrl(baseUrl, path, params, transport),
     mockUrl: buildStreamUrl(baseUrl, mockPath, params, "sse"),
     params,
-    bufferLimit: boundedInteger(args.buffer_limit, DEFAULT_PERSISTENT_BUFFER_LIMIT, HARD_PERSISTENT_BUFFER_LIMIT)
+    bufferLimit: boundedInteger(args.buffer_limit, DEFAULT_PERSISTENT_BUFFER_LIMIT, HARD_PERSISTENT_BUFFER_LIMIT),
+    initialResume: typeof args.since === "string" && args.since.trim() ? args.since.trim() : undefined
   };
 }
 
 function streamPath(endpoint: PersistentStreamEndpoint, eventId?: string): string {
-  switch (endpoint) {
-    case "event_odds_sse":
-      return `/events/${encodeRequiredEventId(eventId, endpoint)}/odds/stream`;
-    case "event_odds_ws":
-      return `/events/${encodeRequiredEventId(eventId, endpoint)}/odds/ws`;
-    case "event_odds_history_sse":
-      return `/events/${encodeRequiredEventId(eventId, endpoint)}/odds/history/stream`;
-    case "event_odds_history_ws":
-      return `/events/${encodeRequiredEventId(eventId, endpoint)}/odds/history/ws`;
-    case "bets_sse":
-      return "/bets/stream";
-    case "bets_ws":
-      return "/bets/ws";
-    case "racing_events_sse":
-      return "/racing/events/stream";
-    case "racing_events_ws":
-      return "/racing/events/ws";
-    case "racing_odds_sse":
-      return `/racing/events/${encodeRequiredEventId(eventId, endpoint)}/odds/stream`;
-    case "racing_odds_ws":
-      return `/racing/events/${encodeRequiredEventId(eventId, endpoint)}/odds/ws`;
+  const family = streamFamilyForEndpoint(endpoint);
+  const template = streamTransport(endpoint) === "websocket" ? family.wsPath : family.ssePath;
+  return renderPublicStreamPath(template, eventId, endpoint);
+}
+
+function streamFamilyForEndpoint(endpoint: PersistentStreamEndpoint): PublicStreamFamily {
+  const family = PUBLIC_STREAM_FAMILIES_BY_ENDPOINT.get(endpoint);
+  if (!family) throw new Error(`Unsupported public stream endpoint: ${endpoint}`);
+  return family;
+}
+
+function streamTransport(endpoint: PersistentStreamEndpoint): PersistentStreamTransport {
+  return endpoint.endsWith("_ws") ? "websocket" : "sse";
+}
+
+function validateStreamArgs(family: PublicStreamFamily, args: OpenStreamArgs): void {
+  if (family.requiresEventId && !args.event_id) {
+    throw new Error(`event_id is required for ${args.endpoint}`);
+  }
+  if (family.requiresSelectionKey && !args.selection_key) {
+    throw new Error("selection_key is required for event odds history streams");
   }
 }
 
-function equivalentSseEndpoint(endpoint: PersistentStreamEndpoint): PersistentStreamEndpoint {
-  switch (endpoint) {
-    case "event_odds_ws":
-      return "event_odds_sse";
-    case "event_odds_history_ws":
-      return "event_odds_history_sse";
-    case "bets_ws":
-      return "bets_sse";
-    case "racing_events_ws":
-      return "racing_events_sse";
-    case "racing_odds_ws":
-      return "racing_odds_sse";
-    default:
-      return endpoint;
-  }
-}
-
-function isHistoryEndpoint(endpoint: PersistentStreamEndpoint): boolean {
-  return endpoint === "event_odds_history_sse" || endpoint === "event_odds_history_ws";
+function renderPublicStreamPath(template: string, eventId: string | undefined, endpoint: PersistentStreamEndpoint): string {
+  if (!template.includes("{event_id}")) return template;
+  return template.replace("{event_id}", encodeRequiredEventId(eventId, endpoint));
 }
 
 function encodeRequiredEventId(eventId: string | undefined, endpoint: PersistentStreamEndpoint): string {
@@ -821,6 +1113,20 @@ function streamQueryParams(args: OpenStreamArgs): QueryParams {
     endpoint: _endpoint,
     event_id: _eventId,
     buffer_limit: _bufferLimit,
+    ...params
+  } = args;
+  return cleanQueryParams(params);
+}
+
+function snapshotQueryParams(args: OpenStreamArgs): QueryParams {
+  const {
+    endpoint: _endpoint,
+    event_id: _eventId,
+    buffer_limit: _bufferLimit,
+    since: _since,
+    catchup: _catchup,
+    heartbeat_sec: _heartbeatSec,
+    max_batch: _maxBatch,
     ...params
   } = args;
   return cleanQueryParams(params);
@@ -963,6 +1269,11 @@ function boundedInteger(value: number | undefined, fallback: number, max: number
   return Math.max(min, Math.min(max, Math.trunc(Number(value))));
 }
 
+function normalizeCursor(value: number | undefined): number | undefined {
+  if (!Number.isFinite(value)) return undefined;
+  return Math.max(0, Math.trunc(Number(value)));
+}
+
 function cleanQueryParams(params: QueryParams): QueryParams {
   return Object.fromEntries(Object.entries(params).filter(([, value]) => value !== undefined && value !== null));
 }
@@ -971,8 +1282,34 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function reconnectDelayMs(attempt: number): number {
+  const capped = Math.min(MAX_RECONNECT_DELAY_MS, 500 * 2 ** Math.max(0, attempt - 1));
+  return Math.trunc(capped * (0.75 + Math.random() * 0.5));
+}
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function isTerminalStreamError(error: unknown): boolean {
+  if (error instanceof StreamHttpError) {
+    return error.status >= 400 && error.status < 500 && error.status !== 408 && error.status !== 409 && error.status !== 429;
+  }
+  return false;
+}
+
+function isTerminalWebSocketClose(code: number): boolean {
+  return code === 1008;
+}
+
+function extractResume(event: SseMessage): string | undefined {
+  const data = event.data;
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    const resume = (data as Record<string, unknown>).resume;
+    if (typeof resume === "string" && resume.trim()) return resume.trim();
+  }
+  if (typeof event.id === "string" && event.id.trim()) return event.id.trim();
+  return undefined;
 }
 
 function createStreamId(): string {

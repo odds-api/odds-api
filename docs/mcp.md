@@ -64,6 +64,7 @@ odds_api.get_account
 odds_api.get_usage
 odds_api.get_limits
 odds_api.get_streaming_info
+odds_api.get_stream_connection
 odds_api.sample_odds_stream
 odds_api.sample_event_odds_history_stream
 odds_api.sample_bets_stream
@@ -93,7 +94,18 @@ Use raw REST when:
 
 ## Streaming
 
-Use `odds_api.get_streaming_info` before generating realtime code.
+Use `odds_api.get_streaming_info` before generating realtime code, then call `odds_api.get_stream_connection` for the stream family you need.
+
+The default production pattern is:
+
+1. Fetch the snapshot URL returned by `get_stream_connection`.
+2. Store the snapshot `resume` token when present.
+3. Connect directly to the returned raw Odds API SSE or WebSocket URL from a backend service.
+4. Apply `delta` messages idempotently.
+5. On disconnect, reconnect with `since=<last_resume>` and `catchup=true`.
+6. On `resync`, reload the snapshot before applying more deltas.
+
+Do not expose `ODDS_API_KEY` in browser code. Use your own backend relay or an endpoint-approved safe auth flow for browser apps.
 
 For quick debugging, use bounded SSE sample tools:
 
@@ -105,7 +117,7 @@ odds_api.sample_racing_events_stream
 odds_api.sample_racing_odds_stream
 ```
 
-For persistent MCP-managed inspection sessions, use:
+For optional MCP-managed broker sessions, use:
 
 ```text
 odds_api.open_stream
@@ -129,7 +141,9 @@ racing_odds_sse             /racing/events/{event_id}/odds/stream
 racing_odds_ws              /racing/events/{event_id}/odds/ws
 ```
 
-MCP stream sessions keep a bounded in-memory event buffer in the MCP server process. Production apps should still connect directly to Odds API SSE or WebSocket endpoints and handle reconnects, resume tokens, stale odds, suspended markets, and rate limits.
+Broker mode keeps a direct upstream SSE/WebSocket connection, reconnects with the latest resume token, and stores events in a bounded in-memory buffer in the MCP server process. `read_stream` defaults to legacy drain behavior; pass `cursor` for non-destructive reads and use `next_cursor` on the next call.
+
+Broker responses expose `sequence`, `last_resume`, `reconnect_count`, `dropped_events`, and `resync_required`. If `resync_required` is true, if the MCP process restarts, or if the caller falls behind the buffer, reload the snapshot before applying more stream events.
 
 ## Safety
 

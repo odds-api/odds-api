@@ -71,6 +71,11 @@ test("mock transport mirrors public response shapes", async (t) => {
   assert.equal(snapshot.items[0].bet_type, "moneyline");
   assert.equal(snapshot.items[0].period_str, "full time");
   assert.equal(Object.hasOwn(snapshot.items[0], "metric"), true);
+  assert.equal(snapshot.items[0].fair_odds, 2.04);
+
+  const fairSnapshot = await client.getOddsSnapshot("event-1001", { price_fields: "odds,fair" });
+  assert.equal(fairSnapshot.items[0].fair_odds, 2.04);
+  assert.equal(Object.hasOwn(fairSnapshot.items[0], "odds_no_vig"), false);
 
   const bets = await client.findPositiveEv({ limit: 1 });
   assert.equal(typeof bets.resume, "string");

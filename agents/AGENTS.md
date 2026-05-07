@@ -13,6 +13,7 @@ You are building with the Odds API: a data-access interface for odds, betting, s
 
 - Bookmaker odds are prices, not fair probabilities.
 - Positive EV means the offered odds are higher than the estimated fair price.
+- `fair_odds` on sports odds lines is the nullable composite fair price; request it with `price_fields=odds,fair` or `price_fields=all`.
 - Arbitrage means all outcomes can be backed across bookmakers before execution costs, limits, voids, delays, or market movement.
 - Always include responsible gambling and execution-risk language in user-facing betting products.
 
@@ -28,9 +29,10 @@ You are building with the Odds API: a data-access interface for odds, betting, s
 - Use `/events/{event_id}/results` for event results.
 - Use `/racing/events` and `/racing/events/{event_id}/odds` for racing workflows.
 - Use snapshots for one-off answers and page loads.
-- Use streams for realtime products; call `odds_api.get_streaming_info` before writing custom realtime code.
-- Use `odds_api.open_stream`, `odds_api.read_stream`, and `odds_api.close_stream` for persistent MCP-managed SSE/WebSocket inspection sessions.
-- Use MCP stream sample tools only for bounded debugging/inspection. Production apps should connect directly to SSE or WebSocket endpoints.
+- Use streams for realtime products; call `odds_api.get_streaming_info` and `odds_api.get_stream_connection` before writing realtime code.
+- For production apps, connect directly to the raw Odds API SSE/WebSocket endpoints from a backend service. Do not expose `ODDS_API_KEY` in browser code.
+- Use `odds_api.open_stream`, `odds_api.read_stream`, and `odds_api.close_stream` only when the MCP process should act as an optional server-side broker with reconnects and a bounded in-memory buffer.
+- Use MCP stream sample tools only for bounded debugging/inspection.
 
 ## Do Not
 
