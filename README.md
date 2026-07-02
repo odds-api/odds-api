@@ -205,6 +205,210 @@ Common agent tasks supported:
 
 See [`AGENTS.md`](AGENTS.md), [`llms.txt`](llms.txt), and [`agents/AGENTS.md`](agents/AGENTS.md) for agent-specific instructions.
 
+## Coverage
+
+Coverage changes as leagues, bookmakers, and markets are added or retired. Use `GET /coverage` for current discovery in production.
+
+### Sports
+
+- american football
+- aussie rules
+- baseball
+- basketball
+- ice hockey
+- mma/ufc
+- rugby league
+- soccer
+- tennis
+
+### Leagues with 7+ bookmakers
+
+- A-League (soccer, 22 bookmakers)
+- A-League Women (soccer, 15 bookmakers)
+- AFL (aussie rules, 28 bookmakers)
+- AFLW (aussie rules, 14 bookmakers)
+- Brazil Paulista A1 (soccer, 8 bookmakers)
+- Brazil Serie A (soccer, 18 bookmakers)
+- Bundesliga (soccer, 27 bookmakers)
+- CFL (american football, 14 bookmakers)
+- Copa Libertadores (soccer, 17 bookmakers)
+- Copa Sudamericana (soccer, 10 bookmakers)
+- EFL Trophy (soccer, 10 bookmakers)
+- England Super League (rugby league, 17 bookmakers)
+- English Championship (soccer, 19 bookmakers)
+- EPL (soccer, 36 bookmakers)
+- EuroCup (basketball, 11 bookmakers)
+- Euroleague (basketball, 13 bookmakers)
+- FIFA Club World Cup (soccer, 14 bookmakers)
+- FIFA World Cup (soccer, 15 bookmakers)
+- Friendlies Women (soccer, 13 bookmakers)
+- Greece GBL (basketball, 11 bookmakers)
+- Indian Premier League (cricket, 10 bookmakers)
+- Japan J League (soccer, 18 bookmakers)
+- Japan NPB (baseball, 17 bookmakers)
+- Korean KBO (baseball, 18 bookmakers)
+- La Liga (soccer, 27 bookmakers)
+- La Liga 2 (soccer, 17 bookmakers)
+- Ligue 1 (soccer, 24 bookmakers)
+- Mexican Baseball League (baseball, 12 bookmakers)
+- MLB (baseball, 27 bookmakers)
+- MLS (soccer, 19 bookmakers)
+- NBA (basketball, 37 bookmakers)
+- NBA Pre-Season (basketball, 16 bookmakers)
+- NBA Summer League (basketball, 15 bookmakers)
+- NBL (basketball, 19 bookmakers)
+- NCAA Baseball (baseball, 8 bookmakers)
+- NCAAW (basketball, 7 bookmakers)
+- New Zealand NBL (basketball, 12 bookmakers)
+- NFL (american football, 28 bookmakers)
+- NHL (ice hockey, 32 bookmakers)
+- NRL (rugby league, 29 bookmakers)
+- NRLW (rugby league, 16 bookmakers)
+- Scotland Championship (soccer, 15 bookmakers)
+- Scotland Premiership (soccer, 17 bookmakers)
+- Serie A (soccer, 26 bookmakers)
+- Serie B (soccer, 18 bookmakers)
+- Spain ACB (basketball, 13 bookmakers)
+- State of Origin (rugby league, 13 bookmakers)
+- UEFA Champions League (soccer, 24 bookmakers)
+- UEFA Champions League Women (soccer, 17 bookmakers)
+- UEFA Champions Qual (soccer, 10 bookmakers)
+- UEFA Conference League (soccer, 15 bookmakers)
+- UEFA Euro Womens (soccer, 15 bookmakers)
+- UEFA Europa League (soccer, 18 bookmakers)
+- UFC (mma, 10 bookmakers)
+- VFL (aussie rules, 13 bookmakers)
+- WNBA (basketball, 19 bookmakers)
+- World Cup Qualifiers Europe (soccer, 13 bookmakers)
+
+### Bookmakers
+
+- 123bet
+- 3et
+- baggybet
+- bet365
+- bet575
+- bet66
+- bet777
+- betalpha
+- betano
+- betaus
+- betbuzz
+- betcha
+- betclic
+- betdaq
+- betdeluxe
+- betestate
+- betexpress
+- betfair
+- betgalaxy
+- betgold
+- betjet
+- betlocal
+- betm
+- betnation
+- betparx
+- betplay
+- betprofessor
+- betr
+- betright
+- betrivers
+- betroyale
+- betsson
+- betway
+- betyoucan
+- betzooka
+- bigbet
+- borgata
+- bossbet
+- buffalobet
+- chasebet
+- chromabet
+- coral
+- crossbet
+- dabble
+- dashbet
+- diamondbet
+- dowbet
+- draftkings
+- fanduel
+- favbet
+- fiestabet
+- gigabet
+- goldenbet888
+- goldenrush
+- hardrockbet
+- havabet
+- jimmybet
+- juicybet
+- junglebet
+- justbet
+- ladbrokes
+- ladbrokes_uk
+- letsbet
+- marantellibet
+- matchbook
+- midasbet
+- mightybet
+- mintbet
+- neds
+- next2go
+- nextbet
+- ninjabet
+- noisy
+- okebet
+- oldgill
+- paddypower
+- palmerbet
+- pandabet
+- picklebet
+- picnicbet
+- pinnacle
+- playup
+- playwest
+- pmu
+- pointsbet
+- ponybet
+- premiumbet
+- pulsebet
+- punt123
+- puntcity
+- puntgenie
+- puntnow
+- puntzone
+- questbet
+- readybet
+- realbookie
+- ripperbet
+- robwaterhouse
+- sbobet
+- skybet
+- slambet
+- smarkets
+- sportsbet
+- sterlingparker
+- sugarcastle
+- superbet
+- surge
+- swiftbet
+- tab
+- tabnz
+- tabtouch
+- taptap
+- templebet
+- terrybet
+- titanbet
+- unibet
+- upcoz
+- vikingbet
+- volcanobet
+- wellbet
+- winamax
+- winnersbet
+- wishbet
+- yesbet
+- zbet
+
 ## SDKs
 
 Use the SDKs when you want ergonomic helpers, typed app integration, and reusable workflows.
