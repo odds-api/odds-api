@@ -286,7 +286,7 @@ Coverage changes as leagues, bookmakers, and markets are added or retired. Use `
 - 123bet
 - 3et
 - baggybet
-- bet365
+- [bet365](https://odds-api.net/bookmakers/bet365)
 - bet575
 - bet66
 - bet777
@@ -300,7 +300,7 @@ Coverage changes as leagues, bookmakers, and markets are added or retired. Use `
 - betdeluxe
 - betestate
 - betexpress
-- betfair
+- [betfair](https://odds-api.net/bookmakers/betfair)
 - betgalaxy
 - betgold
 - betjet
@@ -385,7 +385,7 @@ Coverage changes as leagues, bookmakers, and markets are added or retired. Use `
 - skybet
 - slambet
 - smarkets
-- sportsbet
+- [sportsbet](https://odds-api.net/bookmakers/sportsbet)
 - sterlingparker
 - sugarcastle
 - superbet
