@@ -44,6 +44,7 @@ ODDS_API_MOCK=1 npx @odds-api/mcp
 
 ```text
 odds_api.search_events
+odds_api.list_live_events
 odds_api.get_event
 odds_api.get_event_bookmakers
 odds_api.get_odds
@@ -59,7 +60,13 @@ odds_api.get_results
 odds_api.search_racing_events
 odds_api.get_racing_event
 odds_api.get_racing_odds
+odds_api.get_exchange_orderbook
+odds_api.get_exchange_markets
+odds_api.get_betfair_event_markets
+odds_api.get_prediction_market_orderbook
 odds_api.get_api_metadata
+odds_api.get_status
+odds_api.get_coverage
 odds_api.get_account
 odds_api.get_usage
 odds_api.get_limits
@@ -67,6 +74,8 @@ odds_api.get_streaming_info
 odds_api.get_stream_connection
 odds_api.sample_odds_stream
 odds_api.sample_event_odds_history_stream
+odds_api.sample_exchange_orderbook_stream
+odds_api.sample_prediction_orderbook_stream
 odds_api.sample_bets_stream
 odds_api.sample_racing_events_stream
 odds_api.sample_racing_odds_stream
@@ -112,6 +121,8 @@ For quick debugging, use bounded SSE sample tools:
 ```text
 odds_api.sample_odds_stream
 odds_api.sample_event_odds_history_stream
+odds_api.sample_exchange_orderbook_stream
+odds_api.sample_prediction_orderbook_stream
 odds_api.sample_bets_stream
 odds_api.sample_racing_events_stream
 odds_api.sample_racing_odds_stream
@@ -133,6 +144,10 @@ event_odds_sse              /events/{event_id}/odds/stream
 event_odds_ws               /events/{event_id}/odds/ws
 event_odds_history_sse      /events/{event_id}/odds/history/stream
 event_odds_history_ws       /events/{event_id}/odds/history/ws
+exchange_orderbook_sse      /events/{event_id}/exchange/orderbook/stream
+exchange_orderbook_ws       /events/{event_id}/exchange/orderbook/ws
+prediction_orderbook_sse    /events/{event_id}/prediction-markets/orderbook/stream
+prediction_orderbook_ws     /events/{event_id}/prediction-markets/orderbook/ws
 bets_sse                    /bets/stream
 bets_ws                     /bets/ws
 racing_events_sse           /racing/events/stream
@@ -144,6 +159,13 @@ racing_odds_ws              /racing/events/{event_id}/odds/ws
 Broker mode keeps a direct upstream SSE/WebSocket connection, reconnects with the latest resume token, and stores events in a bounded in-memory buffer in the MCP server process. `read_stream` defaults to legacy drain behavior; pass `cursor` for non-destructive reads and use `next_cursor` on the next call.
 
 Broker responses expose `sequence`, `last_resume`, `reconnect_count`, `dropped_events`, and `resync_required`. If `resync_required` is true, if the MCP process restarts, or if the caller falls behind the buffer, reload the snapshot before applying more stream events.
+
+## Exchanges and prediction markets
+
+- `odds_api.get_exchange_orderbook` returns back/lay ladders for Betdaq, Betfair, Smarkets, and Matchbook on one event. Filter with `exchanges`, `market_keys`, `selection_keys`, and `depth`.
+- `odds_api.get_prediction_market_orderbook` returns Polymarket and Kalshi probability ladders for one event, with gross and estimated fee-adjusted decimal odds. Filter with `providers`, `market_keys`, and `contract_ids`.
+- `odds_api.get_exchange_markets` and `odds_api.get_betfair_event_markets` discover in-play exchange markets and return the opaque `market_id` values plus the subscribe command for the multiplexed `/exchange/orderbooks/ws` WebSocket. That WebSocket is command-driven (`subscribe`/`unsubscribe`), so connect to it directly from your backend rather than through `open_stream`.
+- `/exchange/tennis/scores/ws` is a separate add-on for live tennis scores. When enabled for your key, exchange market discovery for tennis events includes a `score_subscription` recipe.
 
 ## Safety
 

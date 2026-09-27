@@ -40,6 +40,39 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(best[0]["odds"], 2.1)
 
 
+    def test_order_book_exchange_and_live_methods_build_public_urls(self):
+        urls = []
+
+        def transport(method, url, headers, body):
+            urls.append(url)
+            return {"items": []}
+
+        client = OddsApiClient(base_url="https://api.odds-api.net/v1", transport=transport)
+        client.get_status()
+        client.get_coverage(bookmaker="bet365", lookback_days=7)
+        client.list_live_events(sport="soccer", include_opportunity_counts=True)
+        client.get_exchange_orderbook("event 1", exchanges=["betfair", "smarkets"], depth=5)
+        client.get_exchange_markets("30000001", id_type="betfair")
+        client.get_betfair_event_markets("30000001", market_types="MATCH_ODDS")
+        client.get_prediction_market_orderbook("event-1", providers="kalshi")
+        client.get_odds_ticker("NRL", "bet365", "home-ticker")
+        client.list_bookmakers(country_code="AU")
+
+        self.assertEqual(
+            urls,
+            [
+                "https://api.odds-api.net/v1/status",
+                "https://api.odds-api.net/v1/coverage?bookmaker=bet365&lookback_days=7",
+                "https://api.odds-api.net/v1/events/live?sport=soccer&include_opportunity_counts=true",
+                "https://api.odds-api.net/v1/events/event%201/exchange/orderbook/snapshot?exchanges=betfair%2Csmarkets&depth=5",
+                "https://api.odds-api.net/v1/events/30000001/exchange/markets?id_type=betfair",
+                "https://api.odds-api.net/v1/exchange/betfair/events/30000001/markets?market_types=MATCH_ODDS",
+                "https://api.odds-api.net/v1/events/event-1/prediction-markets/orderbook/snapshot?providers=kalshi",
+                "https://api.odds-api.net/v1/widgets/odds-ticker?league=NRL&bookmakers=bet365&widget_id=home-ticker",
+                "https://api.odds-api.net/v1/bookmakers?country_code=AU",
+            ],
+        )
+
 if __name__ == "__main__":
     unittest.main()
 

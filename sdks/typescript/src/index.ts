@@ -26,7 +26,18 @@ export interface EventSummary {
   start_time?: number | null;
   home_team?: string | null;
   away_team?: string | null;
+  event_state?: string | null;
+  live_candidate?: boolean;
+  has_available_bets?: boolean;
+  last_capture?: number | null;
   bookmakers?: Record<string, string | null>;
+  [key: string]: unknown;
+}
+
+export interface EventList {
+  items: EventSummary[];
+  next_cursor?: string | null;
+  count: number;
 }
 
 export interface OddLine {
@@ -75,6 +86,124 @@ export interface BetOpportunity {
 export interface BetsSnapshot {
   items: BetOpportunity[];
   resume?: string;
+  [key: string]: unknown;
+}
+
+export interface PriceLevel {
+  price: number;
+  size: number;
+}
+
+export interface ExchangeSelectionBook {
+  selection_key: string;
+  selection_name?: string | null;
+  side?: string | null;
+  line?: string | null;
+  status?: string | null;
+  last_traded_price?: number | null;
+  available_to_back?: PriceLevel[];
+  available_to_lay?: PriceLevel[];
+  best_back_price?: number | null;
+  best_back_size?: number | null;
+  best_lay_price?: number | null;
+  best_lay_size?: number | null;
+  [key: string]: unknown;
+}
+
+export interface ExchangeOrderBook {
+  id: string;
+  event_id: string;
+  exchange: string;
+  exchange_market_id: string;
+  market_key: string;
+  market_name?: string | null;
+  period: number | string;
+  status?: string | null;
+  in_play?: boolean;
+  total_matched?: number | null;
+  currency?: string | null;
+  freshness?: string;
+  observed_at?: string | null;
+  selections?: ExchangeSelectionBook[];
+  [key: string]: unknown;
+}
+
+export interface ExchangeOrderBookSnapshot {
+  event_id: string;
+  as_of_ts_ms?: number | null;
+  items: ExchangeOrderBook[];
+  next_cursor?: string | null;
+  resume: string;
+  refresh_state?: string;
+  [key: string]: unknown;
+}
+
+export interface ExchangeMarket {
+  market_id: string;
+  event_id: string;
+  exchange: string;
+  sport: string;
+  market_key: string;
+  market_name: string;
+  event_name: string;
+  competition_name: string;
+  start_time?: string | null;
+  in_play_supported: boolean;
+  ladder_depth_max: number;
+  runners?: Array<{ selection_id: number | string; name: string; handicap?: number | null; sort_priority?: number | null }>;
+  [key: string]: unknown;
+}
+
+export interface ExchangeMarkets {
+  event_id: string;
+  exchange: string;
+  count: number;
+  available_market_types: string[];
+  markets: ExchangeMarket[];
+  subscription: { websocket_url: string; command: Record<string, unknown>; max_markets_per_connection: number };
+  score_subscription?: { websocket_url: string; command: Record<string, unknown>; max_events_per_connection: number } | null;
+  [key: string]: unknown;
+}
+
+export interface PredictionContractBook {
+  contract_id: string;
+  outcome: string;
+  contract_name?: string | null;
+  side?: string | null;
+  line?: string | null;
+  status?: string | null;
+  probability_bids?: PriceLevel[];
+  probability_asks?: PriceLevel[];
+  best_bid_probability?: number | null;
+  best_ask_probability?: number | null;
+  last_trade_probability?: number | null;
+  gross_decimal_odds?: number | null;
+  fee_adjusted_decimal_odds?: number | null;
+  [key: string]: unknown;
+}
+
+export interface PredictionOrderBook {
+  id: string;
+  event_id: string;
+  provider: string;
+  provider_market_id: string;
+  market_key: string;
+  market_name?: string | null;
+  period: number | string;
+  status?: string | null;
+  in_play?: boolean;
+  currency?: string | null;
+  observed_at?: string | null;
+  contracts?: PredictionContractBook[];
+  [key: string]: unknown;
+}
+
+export interface PredictionOrderBookSnapshot {
+  event_id: string;
+  as_of_ts_ms?: number | null;
+  items: PredictionOrderBook[];
+  next_cursor?: string | null;
+  resume: string;
   [key: string]: unknown;
 }
 
@@ -154,6 +283,14 @@ export class OddsApiClient {
     return this.get("/");
   }
 
+  getStatus(): Promise<unknown> {
+    return this.get("/status");
+  }
+
+  getCoverage(params: QueryParams = {}): Promise<unknown> {
+    return this.get("/coverage", params);
+  }
+
   getMe(): Promise<unknown> {
     return this.get("/me");
   }
@@ -178,8 +315,12 @@ export class OddsApiClient {
     return this.get("/leagues", params);
   }
 
-  searchEvents(params: QueryParams = {}): Promise<{ items: EventSummary[]; next_cursor?: string | null; count: number }> {
+  searchEvents(params: QueryParams = {}): Promise<EventList> {
     return this.get("/events", params);
+  }
+
+  listLiveEvents(params: QueryParams = {}): Promise<EventList> {
+    return this.get("/events/live", params);
   }
 
   getEvent(eventId: string, params: QueryParams = {}): Promise<unknown> {
@@ -212,6 +353,26 @@ export class OddsApiClient {
 
   findArbitrage(params: QueryParams = {}): Promise<BetsSnapshot> {
     return this.getBetsSnapshot({ ...params, strategies: "arbitrage" });
+  }
+
+  getExchangeOrderBook(eventId: string, params: QueryParams = {}): Promise<ExchangeOrderBookSnapshot> {
+    return this.get(`/events/${encodeURIComponent(eventId)}/exchange/orderbook/snapshot`, params);
+  }
+
+  getExchangeMarkets(eventId: string, params: QueryParams = {}): Promise<ExchangeMarkets> {
+    return this.get(`/events/${encodeURIComponent(eventId)}/exchange/markets`, params);
+  }
+
+  getBetfairEventMarkets(betfairEventId: string, params: QueryParams = {}): Promise<ExchangeMarkets> {
+    return this.get(`/exchange/betfair/events/${encodeURIComponent(betfairEventId)}/markets`, params);
+  }
+
+  getPredictionMarketOrderBook(eventId: string, params: QueryParams = {}): Promise<PredictionOrderBookSnapshot> {
+    return this.get(`/events/${encodeURIComponent(eventId)}/prediction-markets/orderbook/snapshot`, params);
+  }
+
+  getOddsTicker(params: QueryParams & { league: string; bookmakers: string; widget_id: string }): Promise<unknown> {
+    return this.get("/widgets/odds-ticker", params);
   }
 
   getResults(eventId: string): Promise<unknown> {

@@ -21,6 +21,9 @@ https://api.odds-api.net/v1
 - Python SDK usage with `pip install odds-api-client`
 - bookmaker, sport, league, and approximate market coverage discovery
 - bookmaker comparison
+- sports exchange back/lay order books (Betdaq, Betfair, Smarkets, Matchbook)
+- prediction-market order books (Polymarket, Kalshi) linked to sports events
+- live and in-play event discovery
 - arbitrage detection
 - positive EV detection
 - line movement tracking
@@ -55,6 +58,11 @@ https://api.odds-api.net/v1
 - Find arbitrage
 - Find positive EV
 - Track line movement
+- Read exchange order books with `GET /events/{event_id}/exchange/orderbook/snapshot` and stream changes over SSE or WebSocket
+- Read prediction-market order books with `GET /events/{event_id}/prediction-markets/orderbook/snapshot` and stream changes over SSE or WebSocket
+- Discover in-play exchange markets with `GET /events/{event_id}/exchange/markets`, then subscribe on the multiplexed `/exchange/orderbooks/ws` WebSocket
+- List started events that may still be in play with `GET /events/live`
+- Check public API health with `GET /status`
 - Get account identity, usage, limits, sports, leagues, bookmakers, bookmaker countries, coverage, results, racing data, and market schema
 - Discover bookmaker, sport, league, and approximate market coverage with `GET /coverage`
 - Generate production realtime connections with MCP `get_streaming_info` and `get_stream_connection`

@@ -1,6 +1,6 @@
 {
   "name": "@odds-api/client",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "TypeScript SDK for an OpenAPI sports betting odds API for coding agents, with simple REST examples, mock mode, arbitrage, positive EV, line movement, and bookmaker comparison.",
   "license": "Apache-2.0",
   "homepage": "https://odds-api.net",

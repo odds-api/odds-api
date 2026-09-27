@@ -1,6 +1,6 @@
 {
   "name": "@odds-api/mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MCP server for an OpenAPI sports betting odds API for coding agents, with bookmaker comparison, arbitrage, positive EV, line movement, and mock mode tools.",
   "license": "Apache-2.0",
   "homepage": "https://odds-api.net",
@@ -45,7 +45,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.20.0",
-    "@odds-api/client": "^0.1.0",
+    "@odds-api/client": "^0.2.0",
     "ws": "^8.20.0",
     "zod": "^3.24.1"
   },

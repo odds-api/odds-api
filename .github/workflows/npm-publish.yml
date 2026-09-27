@@ -1,0 +1,104 @@
+name: publish-npm
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Package version in sdks/typescript/package.json and mcp-server/package.json"
+        required: true
+        type: string
+      publish:
+        description: "Type publish to confirm publishing @odds-api/client and @odds-api/mcp to npm"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish @odds-api/client and @odds-api/mcp
+    runs-on: ubuntu-latest
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@odds-api/client
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      # npm Trusted Publishing (OIDC) needs npm 11.5.1 or newer.
+      - run: npm install -g npm@^11.5.1
+
+      - name: Read and verify package versions
+        id: versions
+        run: |
+          set -euo pipefail
+          CLIENT_VERSION="$(node -p "require('./sdks/typescript/package.json').version")"
+          MCP_VERSION="$(node -p "require('./mcp-server/package.json').version")"
+          MCP_CLIENT_RANGE="$(node -p "require('./mcp-server/package.json').dependencies['@odds-api/client']")"
+          echo "version=$CLIENT_VERSION" >> "$GITHUB_OUTPUT"
+
+          if [ "$CLIENT_VERSION" != "$MCP_VERSION" ]; then
+            echo "Client version $CLIENT_VERSION does not match MCP version $MCP_VERSION" >&2
+            exit 1
+          fi
+          if [ "$MCP_CLIENT_RANGE" != "^$CLIENT_VERSION" ]; then
+            echo "@odds-api/mcp must depend on @odds-api/client ^$CLIENT_VERSION, found $MCP_CLIENT_RANGE" >&2
+            exit 1
+          fi
+
+          if [ "${{ github.event_name }}" = "release" ]; then
+            RELEASE_VERSION="${GITHUB_REF_NAME#v}"
+            if [ "$RELEASE_VERSION" != "$CLIENT_VERSION" ]; then
+              echo "Release tag $GITHUB_REF_NAME does not match npm package version $CLIENT_VERSION" >&2
+              exit 1
+            fi
+          fi
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ "${{ inputs.publish }}" != "publish" ]; then
+              echo "Manual publish requires publish=publish" >&2
+              exit 1
+            fi
+            if [ "${{ inputs.version }}" != "$CLIENT_VERSION" ]; then
+              echo "Manual version ${{ inputs.version }} does not match npm package version $CLIENT_VERSION" >&2
+              exit 1
+            fi
+          fi
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm pack --dry-run --workspace @odds-api/client
+      - run: npm pack --dry-run --workspace @odds-api/mcp
+
+      # The MCP server depends on the client, so publish the client first.
+      # Already-published versions are skipped so a failed run can be retried.
+      - name: Publish @odds-api/client
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.versions.outputs.version }}"
+          if npm view "@odds-api/client@$VERSION" version >/dev/null 2>&1; then
+            echo "@odds-api/client@$VERSION is already published"
+          else
+            npm publish --access public --workspace @odds-api/client
+          fi
+
+      - name: Publish @odds-api/mcp
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.versions.outputs.version }}"
+          if npm view "@odds-api/mcp@$VERSION" version >/dev/null 2>&1; then
+            echo "@odds-api/mcp@$VERSION is already published"
+          else
+            npm publish --access public --workspace @odds-api/mcp
+          fi

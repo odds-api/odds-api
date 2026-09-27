@@ -21,28 +21,37 @@ test("registers the expanded Odds API MCP tool set", () => {
     "odds_api.find_positive_ev",
     "odds_api.get_account",
     "odds_api.get_api_metadata",
+    "odds_api.get_betfair_event_markets",
     "odds_api.get_bookmaker_countries",
     "odds_api.get_bookmakers",
+    "odds_api.get_coverage",
     "odds_api.get_event",
     "odds_api.get_event_bookmakers",
+    "odds_api.get_exchange_markets",
+    "odds_api.get_exchange_orderbook",
     "odds_api.get_leagues",
     "odds_api.get_limits",
     "odds_api.get_line_movement",
     "odds_api.get_market_schema",
     "odds_api.get_odds",
+    "odds_api.get_prediction_market_orderbook",
     "odds_api.get_racing_event",
     "odds_api.get_racing_odds",
     "odds_api.get_results",
     "odds_api.get_sports",
+    "odds_api.get_status",
     "odds_api.get_stream_connection",
     "odds_api.get_streaming_info",
     "odds_api.get_usage",
+    "odds_api.list_live_events",
     "odds_api.list_streams",
     "odds_api.open_stream",
     "odds_api.read_stream",
     "odds_api.sample_bets_stream",
     "odds_api.sample_event_odds_history_stream",
+    "odds_api.sample_exchange_orderbook_stream",
     "odds_api.sample_odds_stream",
+    "odds_api.sample_prediction_orderbook_stream",
     "odds_api.sample_racing_events_stream",
     "odds_api.sample_racing_odds_stream",
     "odds_api.search_events",
@@ -110,13 +119,84 @@ test("new data tools call the matching client methods", async () => {
   ]);
 });
 
+test("order book, exchange discovery, and live event tools call the matching client methods", async () => {
+  const calls = [];
+  const client = {
+    baseUrl: "https://api.odds-api.net/v1",
+    getStatus: async () => record(calls, "getStatus", null, { status: "operational" }),
+    getCoverage: async (params) => record(calls, "getCoverage", params, { markets: [] }),
+    listLiveEvents: async (params) => record(calls, "listLiveEvents", params, { items: [], count: 0 }),
+    getExchangeOrderBook: async (eventId, params) =>
+      record(calls, "getExchangeOrderBook", { eventId, params }, { event_id: eventId, items: [] }),
+    getExchangeMarkets: async (eventId, params) =>
+      record(calls, "getExchangeMarkets", { eventId, params }, { event_id: eventId, markets: [] }),
+    getBetfairEventMarkets: async (betfairEventId, params) =>
+      record(calls, "getBetfairEventMarkets", { betfairEventId, params }, { markets: [] }),
+    getPredictionMarketOrderBook: async (eventId, params) =>
+      record(calls, "getPredictionMarketOrderBook", { eventId, params }, { event_id: eventId, items: [] }),
+    getMarketSchema: () => ({})
+  };
+  const server = createServer(client);
+
+  assert.deepEqual(await callTool(server, "odds_api.get_status", {}), { status: "operational" });
+  assert.deepEqual(await callTool(server, "odds_api.get_coverage", { bookmaker: "bet365", lookback_days: 7 }), {
+    markets: []
+  });
+  assert.deepEqual(await callTool(server, "odds_api.list_live_events", { sport: "soccer", limit: 10 }), {
+    items: [],
+    count: 0
+  });
+  await callTool(server, "odds_api.get_exchange_orderbook", { event_id: "event-1", exchanges: "betfair,smarkets", depth: 5 });
+  await callTool(server, "odds_api.get_exchange_markets", { event_id: "30000001", id_type: "betfair" });
+  await callTool(server, "odds_api.get_betfair_event_markets", { betfair_event_id: "30000001", market_types: "MATCH_ODDS" });
+  await callTool(server, "odds_api.get_prediction_market_orderbook", { event_id: "event-1", providers: "kalshi" });
+
+  assert.deepEqual(calls, [
+    ["getStatus", null],
+    ["getCoverage", { bookmaker: "bet365", lookback_days: 7 }],
+    ["listLiveEvents", { sport: "soccer", limit: 10 }],
+    ["getExchangeOrderBook", { eventId: "event-1", params: { exchanges: "betfair,smarkets", depth: 5 } }],
+    ["getExchangeMarkets", { eventId: "30000001", params: { id_type: "betfair" } }],
+    ["getBetfairEventMarkets", { betfairEventId: "30000001", params: { market_types: "MATCH_ODDS" } }],
+    ["getPredictionMarketOrderBook", { eventId: "event-1", params: { providers: "kalshi" } }]
+  ]);
+});
+
+test("order book stream connection recipes use the public order book paths", async () => {
+  const server = createServer({ baseUrl: "https://api.odds-api.net/v1" });
+  const exchange = await callTool(server, "odds_api.get_stream_connection", {
+    endpoint: "exchange_orderbook_ws",
+    event_id: "event-1",
+    exchanges: "betfair",
+    depth: 3,
+    since: "10-0"
+  });
+  assert.equal(exchange.family, "exchange_orderbook");
+  assert.equal(new URL(exchange.snapshot.url).pathname, "/v1/events/event-1/exchange/orderbook/snapshot");
+  assert.equal(new URL(exchange.snapshot.url).searchParams.get("since"), null);
+  assert.equal(new URL(exchange.websocket.url).pathname, "/v1/events/event-1/exchange/orderbook/ws");
+  assert.equal(new URL(exchange.websocket.url).searchParams.get("exchanges"), "betfair");
+
+  const prediction = await callTool(server, "odds_api.get_stream_connection", {
+    endpoint: "prediction_orderbook_sse",
+    event_id: "event-1",
+    providers: "polymarket"
+  });
+  assert.equal(prediction.family, "prediction_orderbook");
+  assert.equal(new URL(prediction.sse.url).pathname, "/v1/events/event-1/prediction-markets/orderbook/stream");
+  assert.equal(new URL(prediction.sse.url).searchParams.get("providers"), "polymarket");
+});
+
 test("streaming info explains direct SSE and WebSocket usage", async () => {
   const server = createServer({ baseUrl: "https://api.odds-api.net/v1" });
   const info = await callTool(server, "odds_api.get_streaming_info", {});
   assert.equal(info.base_url, "https://api.odds-api.net/v1");
   assert.ok(info.guidance.mcp_sampling.includes("bounded inspection"));
   assert.ok(info.guidance.mcp_persistent.includes("open_stream"));
-  assert.equal(info.stream_families.length, 5);
+  assert.equal(info.stream_families.length, 7);
+  assert.ok(info.websocket_paths.includes("/events/{event_id}/exchange/orderbook/ws"));
+  assert.ok(info.websocket_paths.includes("/events/{event_id}/prediction-markets/orderbook/ws"));
+  assert.equal(info.common_params.since, "Resume token from a previous snapshot or stream message.");
   assert.ok(info.sse_endpoints.some((endpoint) => endpoint.includes("/bets/stream")));
   assert.ok(info.websocket_paths.some((path) => path.includes("/bets/ws")));
   assert.ok(info.websocket_paths.some((path) => path.includes("/odds/ws")));
@@ -328,6 +408,19 @@ test("samples all public SSE stream families in mock mode", async (t) => {
     max_events: 1
   });
   assert.equal(racingOdds.events[0].data.event_id, "race-1001");
+
+  const exchange = await callTool(server, "odds_api.sample_exchange_orderbook_stream", {
+    event_id: "event-1001",
+    max_events: 1
+  });
+  assert.equal(exchange.events[0].data.changes[0].orderbook.exchange, "betfair");
+  assert.equal(exchange.events[0].data.changes[0].orderbook.selections[0].best_back_price, 2.12);
+
+  const prediction = await callTool(server, "odds_api.sample_prediction_orderbook_stream", {
+    event_id: "event-1001",
+    max_events: 1
+  });
+  assert.equal(prediction.events[0].data.changes[0].orderbook.provider, "polymarket");
 });
 
 test("opens, reads, lists, and closes persistent mock stream sessions", async (t) => {

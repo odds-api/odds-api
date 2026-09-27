@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from typing import Any, Callable
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
 
@@ -64,11 +64,32 @@ class OddsApiClient:
     def post(self, path: str, body: Any | None = None, **params: Any) -> Any:
         return self.request("POST", path, params=params, body=body)
 
+    def get_api_metadata(self) -> Any:
+        return self.get("/")
+
+    def get_status(self) -> Any:
+        return self.get("/status")
+
+    def get_me(self) -> Any:
+        return self.get("/me")
+
+    def get_usage(self) -> Any:
+        return self.get("/usage")
+
+    def get_limits(self) -> Any:
+        return self.get("/limits")
+
     def list_sports(self) -> Any:
         return self.get("/sports")
 
-    def list_bookmakers(self) -> Any:
-        return self.get("/bookmakers")
+    def list_bookmakers(self, **params: Any) -> Any:
+        return self.get("/bookmakers", **params)
+
+    def list_bookmaker_countries(self) -> Any:
+        return self.get("/bookmakers/countries")
+
+    def get_coverage(self, **params: Any) -> Any:
+        return self.get("/coverage", **params)
 
     def list_leagues(self, **params: Any) -> Any:
         return self.get("/leagues", **params)
@@ -76,17 +97,20 @@ class OddsApiClient:
     def search_events(self, **params: Any) -> Any:
         return self.get("/events", **params)
 
-    def get_event(self, event_id: str) -> Any:
-        return self.get(f"/events/{event_id}")
+    def list_live_events(self, **params: Any) -> Any:
+        return self.get("/events/live", **params)
+
+    def get_event(self, event_id: str, **params: Any) -> Any:
+        return self.get(f"/events/{_quote(event_id)}", **params)
 
     def get_event_bookmakers(self, event_id: str) -> Any:
-        return self.get(f"/events/{event_id}/bookmakers")
+        return self.get(f"/events/{_quote(event_id)}/bookmakers")
 
     def get_odds_snapshot(self, event_id: str, **params: Any) -> Any:
-        return self.get(f"/events/{event_id}/odds/snapshot", **params)
+        return self.get(f"/events/{_quote(event_id)}/odds/snapshot", **params)
 
     def get_odds_history(self, event_id: str, **params: Any) -> Any:
-        return self.get(f"/events/{event_id}/odds/history", **params)
+        return self.get(f"/events/{_quote(event_id)}/odds/history", **params)
 
     def get_line_movement(self, event_id: str, selection_key: str, **params: Any) -> Any:
         return self.get_odds_history(event_id, selection_key=selection_key, **params)
@@ -100,17 +124,32 @@ class OddsApiClient:
     def find_arbitrage(self, **params: Any) -> Any:
         return self.get_bets_snapshot(strategies="arbitrage", **params)
 
+    def get_exchange_orderbook(self, event_id: str, **params: Any) -> Any:
+        return self.get(f"/events/{_quote(event_id)}/exchange/orderbook/snapshot", **params)
+
+    def get_exchange_markets(self, event_id: str, **params: Any) -> Any:
+        return self.get(f"/events/{_quote(event_id)}/exchange/markets", **params)
+
+    def get_betfair_event_markets(self, betfair_event_id: str, **params: Any) -> Any:
+        return self.get(f"/exchange/betfair/events/{_quote(betfair_event_id)}/markets", **params)
+
+    def get_prediction_market_orderbook(self, event_id: str, **params: Any) -> Any:
+        return self.get(f"/events/{_quote(event_id)}/prediction-markets/orderbook/snapshot", **params)
+
+    def get_odds_ticker(self, league: str, bookmakers: str, widget_id: str, **params: Any) -> Any:
+        return self.get("/widgets/odds-ticker", league=league, bookmakers=bookmakers, widget_id=widget_id, **params)
+
     def get_results(self, event_id: str) -> Any:
-        return self.get(f"/events/{event_id}/results")
+        return self.get(f"/events/{_quote(event_id)}/results")
 
     def search_racing_events(self, **params: Any) -> Any:
         return self.get("/racing/events", **params)
 
-    def get_racing_event(self, event_id: str) -> Any:
-        return self.get(f"/racing/events/{event_id}")
+    def get_racing_event(self, event_id: str, **params: Any) -> Any:
+        return self.get(f"/racing/events/{_quote(event_id)}", **params)
 
     def get_racing_odds(self, event_id: str, **params: Any) -> Any:
-        return self.get(f"/racing/events/{event_id}/odds", **params)
+        return self.get(f"/racing/events/{_quote(event_id)}/odds", **params)
 
     def find_best_odds(self, event_id: str, **params: Any) -> list[dict[str, Any]]:
         snapshot = self.get_odds_snapshot(event_id, **params)
@@ -153,8 +192,13 @@ class OddsApiClient:
                 continue
             if isinstance(value, (list, tuple)):
                 query[key] = ",".join(str(item) for item in value)
+            elif isinstance(value, bool):
+                query[key] = "true" if value else "false"
             else:
                 query[key] = str(value)
         suffix = f"?{urlencode(query)}" if query else ""
         return f"{self.base_url}{clean_path}{suffix}"
 
+
+def _quote(segment: str) -> str:
+    return quote(str(segment), safe="")

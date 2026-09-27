@@ -105,3 +105,66 @@ test("mock fetch can be injected directly", async () => {
   assert.equal(racingOdds.items[0].bookmaker_name, "bet365");
   assert.equal(racingOdds.items[0].payload.markets[0].market_key, "win");
 });
+
+test("order book, exchange discovery, live event, and widget methods build public URLs", async () => {
+  const urls = [];
+  const client = new OddsApiClient({
+    apiKey: "test_key",
+    baseUrl: "https://api.odds-api.net/v1",
+    fetchImpl: async (url) => {
+      urls.push(String(url));
+      return new Response(JSON.stringify({ items: [] }), { status: 200 });
+    }
+  });
+
+  await client.getStatus();
+  await client.getCoverage({ bookmaker: "bet365", lookback_days: 7 });
+  await client.listLiveEvents({ sport: "soccer" });
+  await client.getExchangeOrderBook("event 1", { exchanges: ["betfair", "smarkets"], depth: 5 });
+  await client.getExchangeMarkets("30000001", { id_type: "betfair" });
+  await client.getBetfairEventMarkets("30000001", { market_types: "MATCH_ODDS" });
+  await client.getPredictionMarketOrderBook("event-1", { providers: "kalshi" });
+  await client.getOddsTicker({ league: "NRL", bookmakers: "bet365", widget_id: "home-ticker" });
+
+  assert.deepEqual(urls, [
+    "https://api.odds-api.net/v1/status",
+    "https://api.odds-api.net/v1/coverage?bookmaker=bet365&lookback_days=7",
+    "https://api.odds-api.net/v1/events/live?sport=soccer",
+    "https://api.odds-api.net/v1/events/event%201/exchange/orderbook/snapshot?exchanges=betfair%2Csmarkets&depth=5",
+    "https://api.odds-api.net/v1/events/30000001/exchange/markets?id_type=betfair",
+    "https://api.odds-api.net/v1/exchange/betfair/events/30000001/markets?market_types=MATCH_ODDS",
+    "https://api.odds-api.net/v1/events/event-1/prediction-markets/orderbook/snapshot?providers=kalshi",
+    "https://api.odds-api.net/v1/widgets/odds-ticker?league=NRL&bookmakers=bet365&widget_id=home-ticker"
+  ]);
+});
+
+test("mock mode covers order books, exchange discovery, live events, status, and coverage", async () => {
+  const client = new OddsApiClient({ baseUrl: "https://api.odds-api.net/v1", fetchImpl: oddsApiMockFetch });
+
+  const exchange = await client.getExchangeOrderBook("event-1001", { depth: 2 });
+  assert.equal(exchange.resume, "1760000000000-0");
+  assert.equal(exchange.items[0].exchange, "betfair");
+  assert.equal(exchange.items[0].selections[0].best_back_price, 2.1);
+  assert.deepEqual(exchange.items[0].selections[0].available_to_lay[0], { price: 2.12, size: 640 });
+
+  const markets = await client.getExchangeMarkets("event-1001");
+  assert.equal(markets.markets[0].market_id, "mkt_mock_match_odds");
+  assert.deepEqual(markets.subscription.command.market_ids, ["mkt_mock_match_odds"]);
+
+  const prediction = await client.getPredictionMarketOrderBook("event-1001");
+  assert.equal(prediction.items[0].provider, "polymarket");
+  assert.equal(prediction.items[0].contracts[0].best_ask_probability, 0.49);
+
+  const live = await client.listLiveEvents();
+  assert.equal(live.items[0].live_candidate, true);
+
+  const status = await client.getStatus();
+  assert.equal(status.source.fresh, true);
+
+  const coverage = await client.getCoverage();
+  assert.equal(coverage.markets[0].sample_event_id, "event-1001");
+
+  const ticker = await client.getOddsTicker({ league: "NRL", bookmakers: "bet365", widget_id: "w1" });
+  assert.equal(ticker.widget_id, "w1");
+  assert.equal(ticker.events[0].markets[0].bookmakers[0].selections[0].price, 2.05);
+});

@@ -14,7 +14,7 @@ Use Trusted Publishing from GitHub Actions. Do not store a long-lived PyPI token
 
 The one-time pending Trusted Publisher setup has been completed. Future package uploads should happen through GitHub Actions.
 
-Coordinate Python SDK releases with npm package releases in [`npm-publishing.md`](npm-publishing.md) so install docs, examples, and agent answers stay aligned across package managers.
+Coordinate Python SDK releases with npm package releases in [`npm-publishing.md`](npm-publishing.md) so install docs, examples, and agent answers stay aligned across package managers. A single GitHub release `vX.Y.Z` triggers both `publish-python` and `publish-npm`, so keep all package versions equal.
 
 ## One-time PyPI setup reference
 
@@ -39,7 +39,7 @@ Use this only when publishing from `main` without a new GitHub release:
 ```bash
 gh workflow run python-publish.yml \
   --repo odds-api/odds-api \
-  -f version=0.1.1 \
+  -f version=X.Y.Z \
   -f publish=publish
 ```
 

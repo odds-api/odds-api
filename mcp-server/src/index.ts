@@ -87,11 +87,33 @@ const betsStreamFieldSchema = {
   include_debug_ids: z.boolean().optional()
 };
 
+const exchangeOrderBookFilterSchema = {
+  exchanges: z.string().optional(),
+  market_keys: z.string().optional(),
+  selection_keys: z.string().optional(),
+  depth: z.number().int().min(1).max(20).optional(),
+  include_source: z.boolean().optional(),
+  include_unavailable: z.boolean().optional()
+};
+
+const predictionOrderBookFilterSchema = {
+  providers: z.string().optional(),
+  market_keys: z.string().optional(),
+  contract_ids: z.string().optional(),
+  depth: z.number().int().min(1).max(20).optional(),
+  include_source: z.boolean().optional(),
+  include_unavailable: z.boolean().optional()
+};
+
 const persistentStreamEndpointSchema = z.enum([
   "event_odds_sse",
   "event_odds_ws",
   "event_odds_history_sse",
   "event_odds_history_ws",
+  "exchange_orderbook_sse",
+  "exchange_orderbook_ws",
+  "prediction_orderbook_sse",
+  "prediction_orderbook_ws",
   "bets_sse",
   "bets_ws",
   "racing_events_sse",
@@ -142,6 +164,30 @@ const PUBLIC_STREAM_FAMILIES: PublicStreamFamily[] = [
     snapshotDescription: "Fetch bounded selection history first, then apply line-movement updates."
   },
   {
+    id: "exchange_orderbook",
+    label: "Event exchange order book",
+    sseEndpoint: "exchange_orderbook_sse",
+    wsEndpoint: "exchange_orderbook_ws",
+    snapshotPath: "/events/{event_id}/exchange/orderbook/snapshot",
+    ssePath: "/events/{event_id}/exchange/orderbook/stream",
+    wsPath: "/events/{event_id}/exchange/orderbook/ws",
+    requiresEventId: true,
+    requiresSelectionKey: false,
+    snapshotDescription: "Fetch the exchange order book snapshot first, then apply order book upserts."
+  },
+  {
+    id: "prediction_orderbook",
+    label: "Prediction-market order book",
+    sseEndpoint: "prediction_orderbook_sse",
+    wsEndpoint: "prediction_orderbook_ws",
+    snapshotPath: "/events/{event_id}/prediction-markets/orderbook/snapshot",
+    ssePath: "/events/{event_id}/prediction-markets/orderbook/stream",
+    wsPath: "/events/{event_id}/prediction-markets/orderbook/ws",
+    requiresEventId: true,
+    requiresSelectionKey: false,
+    snapshotDescription: "Fetch the prediction-market order book snapshot first, then apply order book upserts."
+  },
+  {
     id: "bets",
     label: "Betting opportunities",
     sseEndpoint: "bets_sse",
@@ -189,7 +235,7 @@ const PUBLIC_STREAM_FAMILIES_BY_ENDPOINT = new Map<PersistentStreamEndpoint, Pub
 export function createServer(client = new OddsApiClient()) {
   const server = new McpServer({
     name: "odds-api",
-    version: "0.1.0"
+    version: "0.2.0"
   });
   const streamManager = new PersistentStreamManager(client);
 
@@ -198,6 +244,26 @@ export function createServer(client = new OddsApiClient()) {
     "Retrieve Odds API root metadata, reference, and OpenAPI links.",
     {},
     async () => jsonResult(await client.getApiMetadata())
+  );
+
+  server.tool(
+    "odds_api.get_status",
+    "Retrieve the public Odds API health summary: component status, rate-limit pressure, and data freshness.",
+    {},
+    async () => jsonResult(await client.getStatus())
+  );
+
+  server.tool(
+    "odds_api.get_coverage",
+    "Retrieve bookmaker, sport, league, and recently seen market coverage.",
+    {
+      bookmaker: z.string().optional(),
+      sport: z.string().optional(),
+      league: z.string().optional(),
+      country_code: z.string().optional(),
+      lookback_days: z.number().int().min(1).max(90).optional()
+    },
+    async (args) => jsonResult(await client.getCoverage(args))
   );
 
   server.tool(
@@ -232,9 +298,28 @@ export function createServer(client = new OddsApiClient()) {
       cursor: z.string().optional(),
       limit: z.number().optional(),
       include_bookmaker_ids: z.boolean().optional(),
-      include_source: z.boolean().optional()
+      include_source: z.boolean().optional(),
+      include_opportunity_counts: z.boolean().optional(),
+      event_states: z.string().optional(),
+      not_started_only: z.boolean().optional(),
+      live_candidates: z.boolean().optional()
     },
     async (args) => jsonResult(await client.searchEvents(args))
+  );
+
+  server.tool(
+    "odds_api.list_live_events",
+    "Retrieve sports events that have started and may still be in play. A live candidate is not confirmation of current play.",
+    {
+      sport: z.string().optional(),
+      league: z.string().optional(),
+      cursor: z.string().optional(),
+      limit: z.number().optional(),
+      include_bookmaker_ids: z.boolean().optional(),
+      include_source: z.boolean().optional(),
+      include_opportunity_counts: z.boolean().optional()
+    },
+    async (args) => jsonResult(await client.listLiveEvents(args))
   );
 
   server.tool(
@@ -312,6 +397,52 @@ export function createServer(client = new OddsApiClient()) {
     },
     async ({ event_id, selection_key, ...params }) =>
       jsonResult(await client.getLineMovement(event_id, selection_key, params))
+  );
+
+  server.tool(
+    "odds_api.get_exchange_orderbook",
+    "Retrieve back/lay exchange order books (Betdaq, Betfair, Smarkets, Matchbook) for one sports event.",
+    {
+      event_id: z.string(),
+      ...exchangeOrderBookFilterSchema,
+      refresh: z.boolean().optional(),
+      refresh_timeout_seconds: z.number().min(0.5).max(10).optional()
+    },
+    async ({ event_id, ...params }) => jsonResult(await client.getExchangeOrderBook(event_id, params))
+  );
+
+  server.tool(
+    "odds_api.get_exchange_markets",
+    "Discover in-play exchange markets for one sports event and the opaque market IDs used by the multiplexed order book WebSocket.",
+    {
+      event_id: z.string(),
+      id_type: z.literal("betfair").optional().describe("Set to betfair when event_id is a native numeric Betfair event ID; omit for Odds API event IDs."),
+      market_types: z.string().optional(),
+      refresh: z.boolean().optional()
+    },
+    async ({ event_id, ...params }) => jsonResult(await client.getExchangeMarkets(event_id, params))
+  );
+
+  server.tool(
+    "odds_api.get_betfair_event_markets",
+    "Discover in-play exchange markets from a native numeric Betfair event ID.",
+    {
+      betfair_event_id: z.string(),
+      market_types: z.string().optional(),
+      refresh: z.boolean().optional()
+    },
+    async ({ betfair_event_id, ...params }) =>
+      jsonResult(await client.getBetfairEventMarkets(betfair_event_id, params))
+  );
+
+  server.tool(
+    "odds_api.get_prediction_market_orderbook",
+    "Retrieve Polymarket and Kalshi probability order books linked to one sports event, with gross and fee-adjusted decimal odds.",
+    {
+      event_id: z.string(),
+      ...predictionOrderBookFilterSchema
+    },
+    async ({ event_id, ...params }) => jsonResult(await client.getPredictionMarketOrderBook(event_id, params))
   );
 
   server.tool(
@@ -406,6 +537,11 @@ export function createServer(client = new OddsApiClient()) {
       types: z.string().optional(),
       periods: z.string().optional(),
       price_type: z.string().optional(),
+      exchanges: z.string().optional(),
+      providers: z.string().optional(),
+      selection_keys: z.string().optional(),
+      contract_ids: z.string().optional(),
+      depth: z.number().int().min(1).max(20).optional(),
       strategies: z.string().optional(),
       price_fields: z.string().optional(),
       include_links: z.boolean().optional(),
@@ -449,6 +585,40 @@ export function createServer(client = new OddsApiClient()) {
     async ({ event_id, max_events, timeout_sec, ...params }) =>
       jsonResult(
         await sampleSseStream(client, streamPath("event_odds_history_sse", event_id), params, {
+          max_events,
+          timeout_sec
+        })
+      )
+  );
+
+  server.tool(
+    "odds_api.sample_exchange_orderbook_stream",
+    "Collect a bounded SSE sample from an event exchange order book stream for debugging.",
+    {
+      event_id: z.string(),
+      ...exchangeOrderBookFilterSchema,
+      ...sampleControlsSchema
+    },
+    async ({ event_id, max_events, timeout_sec, ...params }) =>
+      jsonResult(
+        await sampleSseStream(client, streamPath("exchange_orderbook_sse", event_id), params, {
+          max_events,
+          timeout_sec
+        })
+      )
+  );
+
+  server.tool(
+    "odds_api.sample_prediction_orderbook_stream",
+    "Collect a bounded SSE sample from an event prediction-market order book stream for debugging.",
+    {
+      event_id: z.string(),
+      ...predictionOrderBookFilterSchema,
+      ...sampleControlsSchema
+    },
+    async ({ event_id, max_events, timeout_sec, ...params }) =>
+      jsonResult(
+        await sampleSseStream(client, streamPath("prediction_orderbook_sse", event_id), params, {
           max_events,
           timeout_sec
         })
@@ -507,6 +677,11 @@ export function createServer(client = new OddsApiClient()) {
       types: z.string().optional(),
       periods: z.string().optional(),
       price_type: z.string().optional(),
+      exchanges: z.string().optional(),
+      providers: z.string().optional(),
+      selection_keys: z.string().optional(),
+      contract_ids: z.string().optional(),
+      depth: z.number().int().min(1).max(20).optional(),
       strategies: z.string().optional(),
       price_fields: z.string().optional(),
       include_links: z.boolean().optional(),
@@ -971,7 +1146,7 @@ function getStreamingInfo(baseUrl: string) {
       browser_or_app: "Use the auth mode allowed for the endpoint and keep secrets out of client-side code."
     },
     common_params: {
-      since: "Resume token or Redis stream ID from a previous response.",
+      since: "Resume token from a previous snapshot or stream message.",
       catchup: "When supported, include recent changes before live updates.",
       heartbeat_sec: "Heartbeat interval. Typical range is 5-120 seconds."
     },

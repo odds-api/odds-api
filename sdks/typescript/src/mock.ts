@@ -159,6 +159,127 @@ export interface OddsApiMockSseMessage {
   id?: string;
 }
 
+const MOCK_EXCHANGE_ORDER_BOOK = {
+  id: "betfair::moneyline::0",
+  market_id: "mkt_mock_match_odds",
+  event_id: MOCK_EVENT_ID,
+  exchange: "betfair",
+  exchange_market_id: "1.234567890",
+  sport: "rugby-league",
+  market_key: "moneyline",
+  market_name: "Match Odds",
+  type: "moneyline",
+  bet_type: "moneyline",
+  period: 0,
+  period_str: "full time",
+  home_team: "Brisbane Broncos",
+  away_team: "Sydney Roosters",
+  status: "OPEN",
+  in_play: false,
+  total_matched: 125430.5,
+  currency: "AUD",
+  freshness: "fresh",
+  actively_collected: true,
+  observed_at: "2026-04-27T01:00:00Z",
+  selections: [
+    {
+      selection_key: "moneyline:home",
+      selection_name: "Brisbane Broncos",
+      side: "home",
+      status: "ACTIVE",
+      last_traded_price: 2.1,
+      available_to_back: [
+        { price: 2.1, size: 850 },
+        { price: 2.08, size: 1200 }
+      ],
+      available_to_lay: [
+        { price: 2.12, size: 640 },
+        { price: 2.14, size: 900 }
+      ],
+      best_back_price: 2.1,
+      best_back_size: 850,
+      best_lay_price: 2.12,
+      best_lay_size: 640
+    }
+  ]
+};
+
+const MOCK_EXCHANGE_MARKETS = {
+  event_id: MOCK_EVENT_ID,
+  exchange: "betfair",
+  count: 1,
+  available_market_types: ["MATCH_ODDS"],
+  markets: [
+    {
+      market_id: "mkt_mock_match_odds",
+      event_id: MOCK_EVENT_ID,
+      betfair_event_id: "30000001",
+      exchange: "betfair",
+      sport: "rugby-league",
+      market_key: "moneyline",
+      bet_type: "moneyline",
+      metric: "points",
+      period: "full time",
+      source_market_type: "MATCH_ODDS",
+      market_name: "Match Odds",
+      event_name: "Brisbane Broncos v Sydney Roosters",
+      competition_name: "NRL",
+      start_time: "2026-10-09T09:00:00Z",
+      in_play_supported: true,
+      ladder_depth_max: 10,
+      runners: [
+        { selection_id: 1001, name: "Brisbane Broncos", handicap: 0, sort_priority: 1 },
+        { selection_id: 1002, name: "Sydney Roosters", handicap: 0, sort_priority: 2 }
+      ]
+    }
+  ],
+  subscription: {
+    websocket_url: "wss://api.odds-api.net/v1/exchange/orderbooks/ws",
+    command: { op: "subscribe", market_ids: ["mkt_mock_match_odds"], depth: 3 },
+    max_markets_per_connection: 5
+  },
+  score_subscription: null
+};
+
+const MOCK_PREDICTION_ORDER_BOOK = {
+  id: "polymarket::moneyline::0",
+  event_id: MOCK_EVENT_ID,
+  provider: "polymarket",
+  provider_market_id: "pm_mock_market",
+  market_key: "moneyline",
+  market_name: "Brisbane Broncos to win",
+  type: "moneyline",
+  bet_type: "moneyline",
+  period: 0,
+  period_str: "full time",
+  home_team: "Brisbane Broncos",
+  away_team: "Sydney Roosters",
+  status: "open",
+  in_play: false,
+  currency: "USD",
+  size_unit: "contracts",
+  fee_estimated: true,
+  observed_at: "2026-04-27T01:00:00Z",
+  contracts: [
+    {
+      contract_id: "pm_mock_market:yes",
+      contract_name: "Yes",
+      outcome: "yes",
+      side: "home",
+      status: "open",
+      probability_bids: [{ price: 0.47, size: 1500 }],
+      probability_asks: [{ price: 0.49, size: 1200 }],
+      best_bid_probability: 0.47,
+      best_bid_size: 1500,
+      best_ask_probability: 0.49,
+      best_ask_size: 1200,
+      last_trade_probability: 0.48,
+      gross_decimal_odds: 2.04,
+      fee_adjusted_decimal_odds: 2.01
+    }
+  ]
+};
+
 export const oddsApiMockFetch: FetchLike = async (input) => {
   const url = toUrl(input);
   const path = publicPath(url);
@@ -210,6 +331,105 @@ export const oddsApiMockFetch: FetchLike = async (input) => {
 
   if (path === "/events") {
     return json({ items: [clone(MOCK_EVENT)], next_cursor: null, count: 1 });
+  }
+
+  if (path === "/status") {
+    return json({
+      status: "operational",
+      as_of: "2026-04-27T01:00:00Z",
+      window_seconds: 300,
+      components: [{ id: "sports_odds", name: "Sports odds", status: "operational" }],
+      rate_limits: { status: "normal", throttled_pct: 0 },
+      source: { fresh: true, age_seconds: 4 }
+    });
+  }
+
+  if (path === "/coverage") {
+    return json({
+      as_of: "2026-04-27T01:00:00Z",
+      bookmakers: clone(MOCK_BOOKMAKERS),
+      sports: ["rugby-league"],
+      leagues: [{ sport: "rugby-league", league: "NRL" }],
+      markets: [
+        {
+          bookmaker: "bet365",
+          sport: "rugby-league",
+          league: "NRL",
+          bet_type: "moneyline",
+          metric: null,
+          period: "full time",
+          last_seen_at: "2026-04-27T01:00:00Z",
+          sample_event_id: MOCK_EVENT_ID
+        }
+      ],
+      source: { markets_are_approximate: true, lookback_days: 7 }
+    });
+  }
+
+  if (path === "/widgets/odds-ticker") {
+    return json({
+      league: url.searchParams.get("league") || "NRL",
+      widget_id: url.searchParams.get("widget_id") || "mock-widget",
+      last_updated: "2026-04-27T01:00:00Z",
+      events: [
+        {
+          league: "NRL",
+          event_name: "Brisbane Broncos v Sydney Roosters",
+          start_time: MOCK_NOW_SEC + 7200,
+          last_updated: "2026-04-27T01:00:00Z",
+          markets: [
+            {
+              market: "moneyline",
+              bookmakers: [{ label: "bet365", selections: [{ selection: "Brisbane Broncos", price: 2.05 }] }]
+            }
+          ]
+        }
+      ]
+    });
+  }
+
+  if (path === "/events/live") {
+    return json({
+      items: [{ ...clone(MOCK_EVENT), event_state: "in_play", live_candidate: true, has_available_bets: true }],
+      next_cursor: null,
+      count: 1
+    });
+  }
+
+  if (path.match(/^\/events\/[^/]+\/exchange\/orderbook\/snapshot$/)) {
+    const event_id = eventIdFromPath(path);
+    return json({
+      event_id,
+      as_of_ts_ms: MOCK_NOW_MS,
+      ttl_seconds: 30,
+      items: [{ ...clone(MOCK_EXCHANGE_ORDER_BOOK), event_id }],
+      next_cursor: null,
+      resume: MOCK_RESUME,
+      refresh_state: "fresh",
+      fresh_count: 1,
+      stale_count: 0,
+      warming_count: 0
+    });
+  }
+
+  if (path.match(/^\/events\/[^/]+\/exchange\/markets$/)) {
+    return json({ ...clone(MOCK_EXCHANGE_MARKETS), event_id: eventIdFromPath(path) });
+  }
+
+  if (path.match(/^\/exchange\/betfair\/events\/[^/]+\/markets$/)) {
+    return json(clone(MOCK_EXCHANGE_MARKETS));
+  }
+
+  if (path.match(/^\/events\/[^/]+\/prediction-markets\/orderbook\/snapshot$/)) {
+    const event_id = eventIdFromPath(path);
+    return json({
+      event_id,
+      as_of_ts_ms: MOCK_NOW_MS,
+      ttl_seconds: 30,
+      items: [{ ...clone(MOCK_PREDICTION_ORDER_BOOK), event_id }],
+      next_cursor: null,
+      resume: MOCK_RESUME
+    });
   }
 
   if (path === `/events/${MOCK_EVENT_ID}` || path.match(/^\/events\/[^/]+$/)) {
@@ -318,6 +538,48 @@ export function oddsApiMockSseMessages(input: string | URL, params: QueryParams 
               odd: { ...firstLine, odds: 2.12, odds_no_vig: 2.08 }
             }
           ]
+        }
+      },
+      { event: "heartbeat", data: {} }
+    ];
+  }
+
+  if (path.match(/^\/events\/[^/]+\/exchange\/orderbook\/stream$/)) {
+    const event_id = eventIdFromPath(path);
+    const [selection] = MOCK_EXCHANGE_ORDER_BOOK.selections;
+    return [
+      {
+        event: "delta",
+        id: MOCK_NEXT_RESUME,
+        data: {
+          event_id,
+          resume: MOCK_NEXT_RESUME,
+          changes: [
+            {
+              op: "upsert",
+              orderbook: {
+                ...clone(MOCK_EXCHANGE_ORDER_BOOK),
+                event_id,
+                selections: [{ ...clone(selection), best_back_price: 2.12, best_lay_price: 2.14 }]
+              }
+            }
+          ]
+        }
+      },
+      { event: "heartbeat", data: {} }
+    ];
+  }
+
+  if (path.match(/^\/events\/[^/]+\/prediction-markets\/orderbook\/stream$/)) {
+    const event_id = eventIdFromPath(path);
+    return [
+      {
+        event: "delta",
+        id: MOCK_NEXT_RESUME,
+        data: {
+          event_id,
+          resume: MOCK_NEXT_RESUME,
+          changes: [{ op: "upsert", orderbook: { ...clone(MOCK_PREDICTION_ORDER_BOOK), event_id } }]
         }
       },
       { event: "heartbeat", data: {} }

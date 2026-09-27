@@ -25,6 +25,22 @@
       }
     },
     {
+      "name": "Exchange Order Book Snapshot",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "X-API-Key", "value": "{{api_key}}" }],
+        "url": "{{base_url}}/events/{{event_id}}/exchange/orderbook/snapshot?depth=3"
+      }
+    },
+    {
+      "name": "Prediction-Market Order Book Snapshot",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "X-API-Key", "value": "{{api_key}}" }],
+        "url": "{{base_url}}/events/{{event_id}}/prediction-markets/orderbook/snapshot?depth=3"
+      }
+    },
+    {
       "name": "Positive EV Snapshot",
       "request": {
         "method": "GET",
