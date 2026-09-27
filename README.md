@@ -156,6 +156,8 @@ examples/minimal-rest/javascript
 | I want positive EV examples | Positive EV scanner example |
 | I want bookmaker comparison | Bookmaker comparison example |
 | I want line movement tracking | Line movement example |
+| I want Betfair exchange prices | `GET /events/{event_id}/exchange/orderbook/snapshot?exchanges=betfair` |
+| I want Betfair live (in-play) markets | `GET /events/{event_id}/exchange/markets`, then subscribe on `/exchange/orderbooks/ws` |
 
 ## Why use this instead of a simple sample repo?
 
