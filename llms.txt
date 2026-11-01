@@ -21,7 +21,7 @@ https://api.odds-api.net/v1
 - Python SDK usage with `pip install odds-api-client`
 - bookmaker, sport, league, and approximate market coverage discovery
 - bookmaker comparison
-- sports exchange back/lay order books (Betdaq, Betfair, Smarkets, Matchbook)
+- sports exchange back/lay order books (Betfair, Smarkets, Matchbook)
 - prediction-market order books (Polymarket, Kalshi) linked to sports events
 - live and in-play event discovery
 - arbitrage detection

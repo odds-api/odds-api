@@ -731,7 +731,7 @@ function betsSnapshot(searchParams: URLSearchParams) {
 
 function selectedStrategies(searchParams: URLSearchParams): string[] {
   const raw = searchParams.get("strategies") || "pos_ev";
-  if (raw === "all") return ["pos_ev", "arbitrage", "middles", "freebets"];
+  if (raw === "all") return ["pos_ev", "arbitrage"];
   return raw
     .split(",")
     .map((item) => item.trim())
@@ -800,44 +800,6 @@ function betForStrategy(strategy: string) {
       selection_3_match_link: null,
       arbitrage_percentage: 1.8,
       arb_percent: 1.8
-    };
-  }
-
-  if (strategy === "middles") {
-    return {
-      ...base,
-      bookmaker_name: "bet365 + pinnacle",
-      market_type: "handicap",
-      period: "full time",
-      selection_type: "handicap",
-      selection_1_bookmaker_name: "bet365",
-      selection_1_odds: 1.91,
-      selection_1_line: "home -4.5",
-      selection_1_line_repr: "Brisbane Broncos -4.5",
-      selection_1_push_line: false,
-      selection_1_match_link: null,
-      selection_2_bookmaker_name: "pinnacle",
-      selection_2_odds: 1.96,
-      selection_2_line: "away +6.5",
-      selection_2_line_repr: "Sydney Roosters +6.5",
-      selection_2_push_line: false,
-      selection_2_match_link: null,
-      ql_percent: 3.2
-    };
-  }
-
-  if (strategy === "freebets") {
-    return {
-      ...base,
-      bookmaker_name: "sportsbet",
-      bonus_bookmaker_name: "sportsbet",
-      bonus_odds: 2.4,
-      bonus_line: "home",
-      bonus_line_repr: "Brisbane Broncos",
-      bonus_match_link: null,
-      conversion_percent: 72.4,
-      market_type: "moneyline",
-      period: "full time"
     };
   }
 

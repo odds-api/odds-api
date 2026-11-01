@@ -401,7 +401,7 @@ export function createServer(client = new OddsApiClient()) {
 
   server.tool(
     "odds_api.get_exchange_orderbook",
-    "Retrieve back/lay exchange order books (Betdaq, Betfair, Smarkets, Matchbook) for one sports event.",
+    "Retrieve back/lay exchange order books (Betfair, Smarkets, Matchbook) for one sports event.",
     {
       event_id: z.string(),
       ...exchangeOrderBookFilterSchema,

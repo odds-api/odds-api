@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-  Collect a free API key from <a href="https://odds-api.net">odds-api.net</a>.
+  Get an API key at <a href="https://odds-api.net">odds-api.net</a>. Plans are on the <a href="https://odds-api.net/pricing">pricing page</a>. Want to trial it first? Email <a href="mailto:support@odds-api.net">support@odds-api.net</a>.
 </p>
 
 <p align="center">
@@ -209,21 +209,29 @@ See [`AGENTS.md`](AGENTS.md), [`llms.txt`](llms.txt), and [`agents/AGENTS.md`](a
 
 ## Coverage
 
-Coverage changes as leagues, bookmakers, and markets are added or retired. Use `GET /coverage` for current discovery in production.
+Coverage changes as leagues, bookmakers, and markets are added or retired. Use `GET /v1/coverage` for current discovery in production.
 
 ### Sports
+
+The live API currently serves these sports (`GET /v1/sports`):
 
 - american football
 - aussie rules
 - baseball
 - basketball
+- cricket
+- cs2
 - ice hockey
-- mma/ufc
+- mma
 - rugby league
+- rugby union
 - soccer
+- table tennis
 - tennis
 
 ### Leagues with 7+ bookmakers
+
+A point-in-time snapshot; bookmaker counts move with the season. Use `GET /v1/leagues` or `GET /v1/coverage` for current values.
 
 - A-League (soccer, 22 bookmakers)
 - A-League Women (soccer, 15 bookmakers)
@@ -284,187 +292,18 @@ Coverage changes as leagues, bookmakers, and markets are added or retired. Use `
 - World Cup Qualifiers Europe (soccer, 13 bookmakers)
 
 ### Bookmakers
-- 123bet
-- 3et
-- 888sport
-- admiralbet
-- baggybet
-- ballybet
-- bet25
-- [bet365](https://odds-api.net/bookmakers/bet365)
-- bet575
-- bet66
-- bet777
-- bet_at_home
-- betalpha
-- betano
-- betaus
-- betbuzz
-- betcha
-- betcity
-- betclic
-- betdaq
-- betdeluxe
-- betestate
-- betexpress
-- [betfair](https://odds-api.net/bookmakers/betfair)
-- betflag
-- betfred
-- betgalaxy
-- betgold
-- betgoodwin
-- betjet
-- betlocal
-- [betmgm](https://odds-api.net/bookmakers/betmgm)
-- betnation
-- betnation_nl
-- betonline
-- betparx
-- betplay
-- betplay_au
-- betprofessor
-- betr
-- betright
-- [betrivers](https://odds-api.net/bookmakers/betrivers)
-- betroyale
-- betsson
-- betsson_dk
-- betsson_es
-- betsson_it
-- betus
-- betvictor
-- betway
-- betyoucan
-- betzooka
-- bigbet
-- borgata
-- bossbet
-- bovada
-- boylesports
-- buffalobet
-- bwin
-- caesars
-- chasebet
-- chromabet
-- circa
-- cloudbet
-- codere
-- coral
-- dabble
-- danskespil
-- dashbet
-- diamondbet
-- dowbet
-- [draftkings](https://odds-api.net/bookmakers/draftkings)
-- [fanduel](https://odds-api.net/bookmakers/fanduel)
-- favbet
-- fiestabet
-- gigabet
-- goldenbet888
-- goldenrush
-- hardrockbet
-- havabet
-- jacks
-- jimmybet
-- juicybet
-- junglebet
-- justbet
-- kalshi
-- [ladbrokes](https://odds-api.net/bookmakers/ladbrokes)
-- [ladbrokes_uk](https://odds-api.net/bookmakers/ladbrokes)
-- leovegas
-- letsbet
-- luckia
-- marantellibet
-- matchbook
-- merkur_bets
-- midasbet
-- mightybet
-- mintbet
-- mryoker
-- [neds](https://odds-api.net/bookmakers/neds)
-- next2go
-- nextbet
-- ninjabet
-- noisy
-- nordicbet_dk
-- nordicbet_se
-- oddset
-- okebet
-- oldgill
-- [paddypower](https://odds-api.net/bookmakers/paddypower)
-- palmerbet
-- pandabet
-- picklebet
-- picnicbet
-- [pinnacle](https://odds-api.net/bookmakers/pinnacle)
-- playup
-- playwest
-- pmu
-- [pointsbet](https://odds-api.net/bookmakers/pointsbet)
-- pokerstars
-- polymarket
-- ponybet
-- premiumbet
-- pulsebet
-- punt123
-- puntcity
-- puntgenie
-- puntnow
-- puntzone
-- questbet
-- rainbet
-- readybet
-- realbookie
-- ripperbet
-- rivalo
-- robwaterhouse
-- rushbet
-- sbobet
-- shuffle
-- [skybet](https://odds-api.net/bookmakers/skybet)
-- slambet
-- smarkets
-- sportiumco
-- [sportsbet](https://odds-api.net/bookmakers/sportsbet)
-- sportsbetio
-- spreadex
-- stake
-- stakeco
-- sterlingparker
-- sugarcastle
-- superbet
-- surge
-- svenskaspel
-- swiftbet
-- [tab](https://odds-api.net/bookmakers/tab)
-- tabnz
-- [tabtouch](https://odds-api.net/bookmakers/tabtouch)
-- taptap
-- templebet
-- terrybet
-- thescore
-- titanbet
-- toto
-- unibet
-- unibet_fr
-- upcoz
-- vbet
-- vikingbet
-- virginbet
-- volcanobet
-- wellbet
-- [williamhill](https://odds-api.net/bookmakers/williamhill)
-- win2day
-- winamax
-- winamax_de
-- winnersbet
-- wishbet
-- wplay
-- yajuego
-- yesbet
-- zamba
-- zbet
+
+The bookmaker catalog changes often, so this README does not keep a hand-maintained list. Discover it live:
+
+- `GET /v1/bookmakers` lists every active bookmaker key and its country codes; filter by country with `GET /v1/bookmakers?country_code=AU`.
+- `GET /v1/coverage` returns current bookmaker, sport, league, and market coverage.
+- Browse [odds-api.net/bookmakers](https://odds-api.net/bookmakers) and [odds-api.net/coverage](https://odds-api.net/coverage).
+
+```bash
+curl -sS -H "X-API-Key: $ODDS_API_KEY" "https://api.odds-api.net/v1/bookmakers?country_code=AU"
+```
+
+Featured keys include `bet365`, `pinnacle`, `betfair`, `sportsbet`, `tab`, `ladbrokes`, `draftkings`, `fanduel`, `betmgm`, `williamhill`, `unibet`, `smarkets`, `matchbook`, `polymarket`, and `kalshi`.
 
 ## SDKs
 
