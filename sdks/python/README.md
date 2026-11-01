@@ -54,6 +54,12 @@ sports = client.list_sports()
 - `get_line_movement()`
 - `search_racing_events()`
 - `get_racing_odds()`
+- `get_status()`, `get_coverage()`, `list_bookmaker_countries()`
+- `get_me()`, `get_usage()`, `get_limits()`
+- `list_live_events()`
+- `get_exchange_orderbook()`, `get_exchange_markets()`, `get_betfair_event_markets()`
+- `get_prediction_market_orderbook()`
+- `get_odds_ticker()`
 
 ## Safety
 
@@ -65,3 +71,4 @@ Arbitrage and positive EV examples are betting research workflows, not guarantee
 - PyPI: https://pypi.org/project/odds-api-client/
 - API: https://api.odds-api.net/v1
 - OpenAPI: https://github.com/odds-api/odds-api/blob/main/openapi.yaml
+- Changelog: https://github.com/odds-api/odds-api/blob/main/sdks/python/CHANGELOG.md

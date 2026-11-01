@@ -51,11 +51,10 @@ Starter issue drafts live in [`starter-issues.md`](starter-issues.md).
 
 ## Release notes
 
-Suggested release sequence:
+Release history and plan:
 
-- `v0.1.0 - Initial OpenAPI, SDKs, and MCP server`
-- `v0.2.0 - Minimal REST examples and agent discovery files`
-- `v0.3.0 - Expanded examples and mock-mode workflows`
+- `v0.1.0` / `v0.1.1` - Initial OpenAPI, SDKs, MCP server, minimal REST examples, and agent discovery files. Packages went out at different versions: `@odds-api/client` and `@odds-api/mcp` `0.1.0` on npm, `odds-api-client` `0.1.1` on PyPI.
+- `v0.2.0` - OpenAPI synced with the live API; status, coverage, account, live-event, exchange order book, prediction-market order book, and odds ticker support in both SDKs; MCP server grows from 16 to 41 tools with persistent SSE/WebSocket stream sessions and bounded stream samples; TypeScript SDK README; per-package changelogs. All three packages release together at `0.2.0`. See [`sdks/typescript/CHANGELOG.md`](../sdks/typescript/CHANGELOG.md), [`mcp-server/CHANGELOG.md`](../mcp-server/CHANGELOG.md), and [`sdks/python/CHANGELOG.md`](../sdks/python/CHANGELOG.md).
 
 Each release should mention:
 

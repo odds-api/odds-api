@@ -13,7 +13,8 @@ Publish through npm Trusted Publishing from GitHub Actions, the same model the P
 - npm scope: `@odds-api`
 - GitHub environment: `npm`
 - Publish workflow: `.github/workflows/npm-publish.yml`
-- Versions are released in lockstep with the Python SDK: one GitHub release `vX.Y.Z` publishes `@odds-api/client`, `@odds-api/mcp`, and `odds-api-client` at `X.Y.Z`.
+- Published so far at different versions: `@odds-api/client` `0.1.0` and `@odds-api/mcp` `0.1.0` on npm, `odds-api-client` `0.1.1` on PyPI.
+- From `v0.2.0` the plan is to release all three together at the same version: one GitHub release `vX.Y.Z` triggers `publish-npm` and `publish-python`, which publish `@odds-api/client`, `@odds-api/mcp`, and `odds-api-client` at `X.Y.Z`.
 
 ## One-time npm setup
 
@@ -37,7 +38,10 @@ After the first successful Actions publish, set each package's publishing access
    mcp-server/package.json
    sdks/python/pyproject.toml
    sdks/python/src/odds_api/__init__.py
+   mcp-server/src/index.ts   (McpServer version)
    ```
+
+   Add the release to each package's `CHANGELOG.md` (`sdks/typescript`, `mcp-server`, `sdks/python`).
 
 2. Keep `@odds-api/mcp` depending on the matching published client version, not a local `file:` dependency. The workflow fails if they differ:
 
