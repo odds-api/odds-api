@@ -1,0 +1,50 @@
+{
+  "event_id": "example-basketball-001",
+  "as_of_ts_ms": 1793836800000,
+  "ttl_seconds": 60,
+  "resume": "1793836800000-0",
+  "next_cursor": null,
+  "items": [
+    {
+      "id": "example-odd-1",
+      "event_id": "example-basketball-001",
+      "bookmaker": "example-bookmaker-a",
+      "selection_key": "example-home-moneyline",
+      "market_key": "moneyline",
+      "type": "moneyline",
+      "period": 0,
+      "side": "home",
+      "selection_name": "Example Home",
+      "odds": 1.95,
+      "odds_no_vig": 2.0,
+      "is_available": true
+    },
+    {
+      "id": "example-odd-2",
+      "event_id": "example-basketball-001",
+      "bookmaker": "example-bookmaker-b",
+      "selection_key": "example-home-moneyline",
+      "market_key": "moneyline",
+      "type": "moneyline",
+      "period": "0",
+      "side": "home",
+      "selection_name": "Example Home",
+      "odds": 2.05,
+      "is_available": true
+    },
+    {
+      "id": "example-odd-3",
+      "event_id": "example-basketball-001",
+      "bookmaker": "example-bookmaker-a",
+      "selection_key": "example-away-spread",
+      "market_key": "spread",
+      "type": "spread",
+      "period": 0,
+      "line": "+3.5",
+      "side": "away",
+      "selection_name": "Example Away +3.5",
+      "odds": null,
+      "is_available": false
+    }
+  ]
+}
