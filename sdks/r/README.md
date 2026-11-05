@@ -11,10 +11,27 @@ sports odds snapshots into data frames for analysis.
 
 ## Install
 
-Requires R 4.1 or later. This source package is not yet published on CRAN or
-R-Universe.
+Requires R 4.1 or later. Install from the
+[Odds API R-Universe repository](https://odds-api.r-universe.dev/oddsapi):
 
-From a checkout containing this package, run in the repository root:
+```r
+install.packages("oddsapi", repos = c(
+  "https://odds-api.r-universe.dev",
+  "https://cloud.r-project.org"
+))
+```
+
+The package is also available directly from the
+[Odds API GitHub repository](https://github.com/odds-api/odds-api):
+
+```r
+install.packages("remotes")
+remotes::install_github("odds-api/odds-api", subdir = "sdks/r",
+                        dependencies = NA, upgrade = "never")
+```
+
+The package has not been submitted to CRAN. For local development from a
+checkout containing this package, run in the repository root:
 
 ```r
 install.packages("remotes")
@@ -26,14 +43,6 @@ For a downloaded `oddsapi_0.1.0.tar.gz` source archive:
 ```r
 install.packages("httr2")
 install.packages("oddsapi_0.1.0.tar.gz", repos = NULL, type = "source")
-```
-
-After this version is available on the repository's default branch, GitHub
-installation will also work:
-
-```r
-remotes::install_github("odds-api/odds-api", subdir = "sdks/r",
-                        dependencies = NA, upgrade = "never")
 ```
 
 ## Fetch odds
